@@ -20,7 +20,7 @@ BASE_MODEL = "swiss-ai/Apertus-v1.5-8B"
 BASE_REVISION = "main"
 DEVICE = "cuda:0"
 EPOCHS = 4
-BATCH_SIZE = 16
+BATCH_SIZE = 4
 LORA_RANK = 16
 LEARNING_RATE = 5e-5
 SEED = 0
@@ -33,7 +33,7 @@ def build_model(
     device,
     rank,
 ):
-    dtype = torch.bfloat16 if str(device).startswith("cuda") else torch.float32
+    dtype = torch.bfloat16 if torch.device(device).type == "cuda" else torch.float32
 
     backbone = ApertusModel.from_pretrained(
         base,
@@ -50,8 +50,8 @@ def build_model(
         target_modules=["w_q", "w_k", "w_v", "w_o", "up", "down"],
     )
 
-    head = PointerHead(backbone.input_layer.embedding.embedding_dim).to(
-        device=device, dtype=dtype
+    head = PointerHead(backbone.input_layer.embedding_dim).to(
+        device=device, dtype=torch.float32
     )
 
     return JevModel(backbone, head).add_lora(config)
@@ -78,8 +78,14 @@ def evaluate(model, loader, device):
     for batch in loader:
         batch = batch_to_device(batch, device)
         examples = batch["examples"]
-        logits = model.forward_batch(batch)
-        total_loss += question_losses(logits, examples).sum().item()
+        with torch.autocast(
+            device_type=torch.device(device).type,
+            dtype=torch.bfloat16,
+            enabled=torch.device(device).type == "cuda",
+        ):
+            logits = model.forward_batch(batch)
+            losses = question_losses(logits, examples)
+        total_loss += losses.sum().item()
         correct += sum(
             scores.argmax().item() == example["label"]
             for scores, example in zip(logits, examples)
@@ -99,18 +105,18 @@ def main():
     train = load_examples(os.path.join(DATA_DIR, "train.jsonl"), tokenizer)
     development = load_examples(os.path.join(DATA_DIR, "development.jsonl"), tokenizer)
     pad_id = tokenizer.pad_token_id if tokenizer.pad_token_id is not None else 0
-    collate = partial(collate_questions, pad_id=pad_id)
+
     train_loader = DataLoader(
         train,
         batch_size=BATCH_SIZE,
         shuffle=True,
-        collate_fn=collate,
+        collate_fn=partial(collate_questions, pad_id=pad_id),
         generator=torch.Generator().manual_seed(SEED),
     )
     dev_loader = DataLoader(
         development,
         batch_size=BATCH_SIZE,
-        collate_fn=collate,
+        collate_fn=partial(collate_questions, pad_id=pad_id),
     )
 
     print("Building model...")
@@ -138,12 +144,19 @@ def main():
                 examples = batch["examples"]
 
                 optimizer.zero_grad(set_to_none=True)
-                logits = model.forward_batch(batch)
-                losses = question_losses(logits, examples)
+                with torch.autocast(
+                    device_type=torch.device(DEVICE).type,
+                    dtype=torch.bfloat16,
+                    enabled=torch.device(DEVICE).type == "cuda",
+                ):
+                    logits = model.forward_batch(batch)
+                    losses = question_losses(logits, examples)
+                    loss = losses.mean()
+
                 batch_loss = losses.sum().item() / len(examples)
                 total_loss += batch_loss * len(examples)
                 seen += len(examples)
-                losses.mean().backward()
+                loss.backward()
 
                 optimizer.step()
                 step += 1
@@ -187,7 +200,7 @@ def main():
             )
 
             model.save_pretrained(
-                OUTPUT_DIR,
+                os.path.join(OUTPUT_DIR, f"epoch_{epoch + 1}"),
                 backbone_config={
                     "model_id": BASE_MODEL,
                     "revision": BASE_REVISION,
@@ -198,6 +211,11 @@ def main():
                     "batch_size": BATCH_SIZE,
                     "lr": LEARNING_RATE,
                     "seed": SEED,
+                    "precision": (
+                        "torch.bfloat16"
+                        if torch.device(DEVICE).type == "cuda"
+                        else "torch.float32"
+                    ),
                 },
             )
 
