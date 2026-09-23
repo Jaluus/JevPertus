@@ -30,7 +30,8 @@ class JevModel(nn.Module):
 
     Head: forward(decide, options) -> one logit per option. For saving, the
     head exposes a JSON-serializable `config` of its constructor arguments.
-    One encoded question is scored per call, as in our training script.
+    forward scores one question; forward_batch scores an already padded batch
+    whose ids and mask are on the model device.
     The caller places example["ids"] on the model device as a 1D tensor and
     initializes the backbone and head with matching device and dtype.
     """
@@ -54,6 +55,17 @@ class JevModel(nn.Module):
         options = hidden[example["option_ends"]]
         return self.head(decide, options)
 
+    def forward_batch(self, batch):
+        """Run one backbone pass and return logits per question.
+
+        Option counts may differ, so the small pointer head runs per question.
+        """
+        hidden = self.backbone.partial_forward(batch["ids"], mask=batch["mask"])
+        return [
+            self.head(row[example["decide"]], row[example["option_ends"]])
+            for row, example in zip(hidden, batch["examples"])
+        ]
+
     @torch.no_grad()
     def predict(self, example):
         self.eval()
@@ -67,7 +79,6 @@ class JevModel(nn.Module):
     def save_pretrained(
         self,
         directory,
-        tokenizer,
         backbone_config,
         training_config=None,
     ):
@@ -99,7 +110,6 @@ class JevModel(nn.Module):
             },
             os.path.join(directory, "jev.pt"),
         )
-        tokenizer.save_pretrained(os.path.join(directory, "tokenizer"))
 
     @classmethod
     def from_pretrained(

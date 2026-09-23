@@ -2,6 +2,9 @@
 
 import json
 
+import torch
+from torch.nn.utils.rnn import pad_sequence
+
 SPECIAL_TOKENS = {
     "context": "<SPECIAL_100>",
     "question": "<SPECIAL_101>",
@@ -9,6 +12,20 @@ SPECIAL_TOKENS = {
     "option_end": "<SPECIAL_103>",
     "decide": "<SPECIAL_104>",
 }
+
+
+def collate_questions(examples, pad_id=0):
+    """Pad token rows on CPU, retaining each question's option metadata."""
+    rows = [torch.as_tensor(example["ids"], dtype=torch.long) for example in examples]
+    ids = pad_sequence(rows, batch_first=True, padding_value=pad_id)
+    lengths = torch.tensor([len(row) for row in rows])
+    mask = torch.arange(ids.shape[1])[None, :] < lengths[:, None]
+    return {"ids": ids, "mask": mask, "examples": examples}
+
+
+def batch_to_device(batch, device):
+    """Move batch tensors while leaving Python metadata on the CPU."""
+    return {**batch, "ids": batch["ids"].to(device), "mask": batch["mask"].to(device)}
 
 
 def question_options(question):

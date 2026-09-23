@@ -1,14 +1,15 @@
 """Minimal JevType training: frozen Apertus + LoRA + an option pointer head."""
 
 import os
-import random
+from functools import partial
 
 import torch
 import torch.nn.functional as F
 from peft import LoraConfig
+from torch.utils.data import DataLoader
 from transformers import AutoTokenizer
 
-from apertus_data import load_examples
+from apertus_data import batch_to_device, collate_questions, load_examples
 from modeling.apertus.apertus_8b import ApertusModel
 from modeling.jev import JevModel, PointerHead
 
@@ -18,6 +19,7 @@ BASE_MODEL = "swiss-ai/Apertus-v1.5-8B"
 BASE_REVISION = "main"
 DEVICE = "cuda:4"
 EPOCHS = 1
+BATCH_SIZE = 4
 LORA_RANK = 16
 LEARNING_RATE = 5e-5
 SEED = 0
@@ -54,32 +56,61 @@ def build_model(
     return JevModel(backbone, head).add_lora(config)
 
 
+def question_losses(logits, examples):
+    """One cross-entropy per question, allowing different option counts."""
+    return torch.stack(
+        [
+            F.cross_entropy(
+                scores[None].float(),
+                torch.tensor([example["label"]], device=scores.device),
+            )
+            for scores, example in zip(logits, examples)
+        ]
+    )
+
+
 @torch.no_grad()
-def evaluate(model, examples, device):
+def evaluate(model, loader, device):
     model.eval()
     total_loss, correct = 0.0, 0
 
-    for example in examples:
-        example = {**example, "ids": torch.tensor(example["ids"], device=device)}
-        logits = model(example)
-        target = torch.tensor([example["label"]], device=logits.device)
-        total_loss += F.cross_entropy(logits[None].float(), target).item()
-        correct += logits.argmax().item() == example["label"]
+    for batch in loader:
+        batch = batch_to_device(batch, device)
+        examples = batch["examples"]
+        logits = model.forward_batch(batch)
+        total_loss += question_losses(logits, examples).sum().item()
+        correct += sum(
+            scores.argmax().item() == example["label"]
+            for scores, example in zip(logits, examples)
+        )
 
-    return total_loss / len(examples), correct / len(examples)
+    return total_loss / len(loader.dataset), correct / len(loader.dataset)
 
 
 def main():
 
-    os.makedirs(OUTPUT_DIR, exist_ok=False)
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
     torch.manual_seed(SEED)
-    rng = random.Random(SEED)
 
     tokenizer = AutoTokenizer.from_pretrained(BASE_MODEL, revision=BASE_REVISION)
 
     print(f"Loading training data from {DATA_DIR}...")
     train = load_examples(os.path.join(DATA_DIR, "train.jsonl"), tokenizer)
     development = load_examples(os.path.join(DATA_DIR, "development.jsonl"), tokenizer)
+    pad_id = tokenizer.pad_token_id if tokenizer.pad_token_id is not None else 0
+    collate = partial(collate_questions, pad_id=pad_id)
+    train_loader = DataLoader(
+        train,
+        batch_size=BATCH_SIZE,
+        shuffle=True,
+        collate_fn=collate,
+        generator=torch.Generator().manual_seed(SEED),
+    )
+    dev_loader = DataLoader(
+        development,
+        batch_size=BATCH_SIZE,
+        collate_fn=collate,
+    )
 
     print("Building model...")
     model = build_model(BASE_MODEL, BASE_REVISION, DEVICE, LORA_RANK)
@@ -90,33 +121,29 @@ def main():
     optimizer = torch.optim.AdamW(parameters, lr=LEARNING_RATE, weight_decay=0.01)
 
     for epoch in range(EPOCHS):
-        rng.shuffle(train)
         model.train()
         total_loss = 0.0
-        for index, example in enumerate(train, start=1):
+        seen = 0
+        for batch in train_loader:
+            batch = batch_to_device(batch, DEVICE)
+            examples = batch["examples"]
 
             optimizer.zero_grad(set_to_none=True)
-            example = {
-                **example,
-                "ids": torch.tensor(example["ids"], device=DEVICE),
-            }
-
-            logits = model(example)
-
-            target = torch.tensor([example["label"]], device=logits.device)
-            loss = F.cross_entropy(logits[None].float(), target)
-            total_loss += loss.item()
-            loss.backward()
+            logits = model.forward_batch(batch)
+            losses = question_losses(logits, examples)
+            total_loss += losses.sum().item()
+            seen += len(examples)
+            losses.mean().backward()
 
             optimizer.step()
 
-            if index % 20 == 0:
-                print(
-                    f"epoch {epoch + 1} questions {index}/{len(train)} loss {total_loss / index:.4f}",
-                    flush=True,
-                )
+            print(
+                f"epoch {epoch + 1} questions {seen}/{len(train)} loss {total_loss / seen:.4f}",
+                end="\r",
+                flush=True,
+            )
 
-        dev_loss, accuracy = evaluate(model, development, DEVICE)
+        dev_loss, accuracy = evaluate(model, dev_loader, DEVICE)
 
         print(
             f"epoch {epoch + 1}: development loss {dev_loss:.4f}, accuracy {accuracy:.3%}"
@@ -124,7 +151,6 @@ def main():
 
         model.save_pretrained(
             OUTPUT_DIR,
-            tokenizer,
             backbone_config={
                 "model_id": BASE_MODEL,
                 "revision": BASE_REVISION,
@@ -132,6 +158,7 @@ def main():
             training_config={
                 "data": DATA_DIR,
                 "epochs": EPOCHS,
+                "batch_size": BATCH_SIZE,
                 "lr": LEARNING_RATE,
                 "seed": SEED,
             },
