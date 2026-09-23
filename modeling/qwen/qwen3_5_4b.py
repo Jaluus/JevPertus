@@ -82,8 +82,8 @@ class GroupQueryAttention(nn.Module):
         partial_rotary_factor=0.25,
     ):
         super().__init__()
-        if num_heads % num_kv_groups:
-            raise ValueError("num_heads must be divisible by num_kv_groups")
+        if num_heads <= 0 or num_kv_groups <= 0 or num_heads % num_kv_groups:
+            raise ValueError("num_heads must be a positive multiple of num_kv_groups")
         self.num_heads = num_heads
         self.num_kv_groups = num_kv_groups
         self.head_dim = head_dim
@@ -134,6 +134,7 @@ class GroupQueryAttention(nn.Module):
             .transpose(1, 2)
             .reshape(batch_size, num_tokens, self.hidden_dim)
         )
+
         context = (
             context * gate.reshape(batch_size, num_tokens, self.hidden_dim).sigmoid()
         )
@@ -391,6 +392,7 @@ class Qwen3_5Model(nn.Module):
         """
         import json
         from pathlib import Path
+
         from safetensors import safe_open
 
         if not dtype.is_floating_point or torch.device(device).type == "meta":
@@ -503,45 +505,16 @@ class Qwen3_5Model(nn.Module):
             raise RuntimeError("Some model parameters were not loaded")
         return model.eval()
 
-    def forward(
-        self,
-        x,
-        mask=None,
-    ):
-        """Token IDs (batch, tokens) -> logits (batch, tokens, vocab_size).
+    def forward(self, x, mask=None):
+        """Token IDs (batch, tokens) -> logits (batch, tokens, vocab_size)."""
+        return self.output_layer(self.partial_forward(x, mask))
+
+    def partial_forward(self, x, mask=None):
+        """Token IDs (batch, tokens) -> final normalized hidden states.
 
         Optional mask: (batch, tokens), 1 for real tokens and 0 for padding.
         Use contiguous left/right padding; arbitrary attention masks and packed
         sequences are not supported by this simple recurrent implementation.
-        """
-        if x.ndim != 2 or not 0 < x.shape[1] <= self.context_len:
-            raise ValueError(
-                "Expected token IDs of shape (batch, tokens), with 1 <= tokens <= context_len"
-            )
-        if mask is not None:
-            if mask.shape != x.shape:
-                raise ValueError(
-                    "mask must have the same (batch, tokens) shape as the input"
-                )
-            mask = mask.to(device=x.device, dtype=torch.bool)
-
-        x = self.input_layer(x)
-        for block in self.transformer_blocks:
-            x = block(x, mask)
-        return self.output_layer(self.final_norm(x))
-
-    def partial_forward(
-        self,
-        x,
-        mask=None,
-    ):
-        """Token IDs (batch, tokens) -> logits (batch, tokens, vocab_size).
-
-        Optional mask: (batch, tokens), 1 for real tokens and 0 for padding.
-        Use contiguous left/right padding; arbitrary attention masks and packed
-        sequences are not supported by this simple recurrent implementation.
-
-        This function omits the final output layer, returning the final hidden states instead of logits.
         """
         if x.ndim != 2 or not 0 < x.shape[1] <= self.context_len:
             raise ValueError(
