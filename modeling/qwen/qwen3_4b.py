@@ -36,7 +36,7 @@ class RoPE(nn.Module):
         self.context_len = context_len
 
         N = 10000
-        inv_freq = 1. / (N ** (torch.arange(0, embed_dim, 2).float() / embed_dim))
+        inv_freq = 1.0 / (N ** (torch.arange(0, embed_dim, 2).float() / embed_dim))
         inv_freq = torch.cat((inv_freq, inv_freq), dim=-1)
         positions = torch.arange(context_len)
 
@@ -49,8 +49,8 @@ class RoPE(nn.Module):
         seq_len = x.size(1)
         x1, x2 = x.chunk(2, dim=-1)
 
-        adj_cos = self.cos[: seq_len].unsqueeze(0).unsqueeze(0)
-        adj_sin = self.sin[: seq_len].unsqueeze(0).unsqueeze(0)
+        adj_cos = self.cos[:seq_len].unsqueeze(0).unsqueeze(0)
+        adj_sin = self.sin[:seq_len].unsqueeze(0).unsqueeze(0)
 
         rotation = torch.cat((-x2, x1), dim=-1)
 
@@ -60,14 +60,18 @@ class RoPE(nn.Module):
 
 
 class GroupQueryAttention(nn.Module):
-    def __init__(self, embed_dim, context_len, num_heads, num_kv_groups, head_dim, qk_norm = False):
+    def __init__(
+        self, embed_dim, context_len, num_heads, num_kv_groups, head_dim, qk_norm=False
+    ):
         super().__init__()
         self.embed_dim = embed_dim
         self.context_len = context_len
         self.num_heads = num_heads
         self.num_kv_groups = num_kv_groups
 
-        assert num_heads % num_kv_groups == 0, "num_heads must be divisible by num_kv_groups"
+        assert (
+            num_heads % num_kv_groups == 0
+        ), "num_heads must be divisible by num_kv_groups"
         self.group_size = num_heads // num_kv_groups
 
         if head_dim is None:
@@ -96,9 +100,15 @@ class GroupQueryAttention(nn.Module):
         k = self.w_k(x)
         v = self.w_v(x)
 
-        q = q.view(batch_size, num_tokens, self.num_heads, self.head_dim).transpose(1, 2)
-        k = k.view(batch_size, num_tokens, self.num_kv_groups, self.head_dim).transpose(1, 2)
-        v = v.view(batch_size, num_tokens, self.num_kv_groups, self.head_dim).transpose(1, 2)
+        q = q.view(batch_size, num_tokens, self.num_heads, self.head_dim).transpose(
+            1, 2
+        )
+        k = k.view(batch_size, num_tokens, self.num_kv_groups, self.head_dim).transpose(
+            1, 2
+        )
+        v = v.view(batch_size, num_tokens, self.num_kv_groups, self.head_dim).transpose(
+            1, 2
+        )
 
         if self.q_norm is not None:
             q = self.q_norm(q)
@@ -116,7 +126,11 @@ class GroupQueryAttention(nn.Module):
             attn_score = attn_score.masked_fill(mask == 0, -1e9)
         attn_weight = F.softmax(attn_score, dim=-1)
 
-        context = (attn_weight @ v).transpose(1, 2).reshape(batch_size, num_tokens, self.head_dim)
+        context = (
+            (attn_weight @ v)
+            .transpose(1, 2)
+            .reshape(batch_size, num_tokens, self.head_dim)
+        )
 
         output = self.w_o(context)
         return output
@@ -130,7 +144,7 @@ class FeedForwardNetwork(nn.Module):
         self.ll3 = nn.Linear(hidden_dim, embed_dim)
 
     def forward(self, x):
-        up  = self.ll1(x)
+        up = self.ll1(x)
         down = self.ll2(x)
 
         gate = F.silu(up) * down
@@ -157,10 +171,21 @@ class OutputLayer(nn.Module):
 
 
 class TransformerBlock(nn.Module):
-    def __init__(self, embed_dim, hidden_dim, context_len, num_heads, num_kv_groups, head_dim, qk_norm):
+    def __init__(
+        self,
+        embed_dim,
+        hidden_dim,
+        context_len,
+        num_heads,
+        num_kv_groups,
+        head_dim,
+        qk_norm,
+    ):
         super().__init__()
         self.rms_norm1 = RMSNorm(embed_dim)
-        self.group_query_attention = GroupQueryAttention(embed_dim, context_len, num_heads, num_kv_groups, head_dim, qk_norm)
+        self.group_query_attention = GroupQueryAttention(
+            embed_dim, context_len, num_heads, num_kv_groups, head_dim, qk_norm
+        )
 
         self.sc = SkipConnection()
         self.rms_norm2 = RMSNorm(embed_dim)
@@ -195,12 +220,34 @@ class TransformerBlock(nn.Module):
 
 
 class Qwen3Model(nn.Module):
-    def __init__(self, vocab_size, embed_dim, hidden_dim, context_len, num_heads, num_kv_groups, head_dim, qk_norm, num_attn_blocks):
+    def __init__(
+        self,
+        vocab_size,
+        embed_dim,
+        hidden_dim,
+        context_len,
+        num_heads,
+        num_kv_groups,
+        head_dim,
+        qk_norm,
+        num_attn_blocks,
+    ):
         super().__init__()
         self.input_layer = InputLayer(vocab_size, embed_dim)
 
         self.transformer_blocks = nn.ModuleList(
-            *[TransformerBlock(embed_dim, context_len, num_heads, num_kv_groups, head_dim, qk_norm) for _ in range(num_attn_blocks)],
+            *[
+                TransformerBlock(
+                    embed_dim,
+                    hidden_dim,
+                    context_len,
+                    num_heads,
+                    num_kv_groups,
+                    head_dim,
+                    qk_norm,
+                )
+                for _ in range(num_attn_blocks)
+            ],
         )
 
         self.final_norm = RMSNorm(embed_dim)
@@ -210,7 +257,7 @@ class Qwen3Model(nn.Module):
         x = self.input_layer(x)
 
         for transformer_block in self.transformer_blocks:
-            x = self.transformer_blocks(x, mask)
+            x = transformer_block(x, mask)
 
         x = self.final_norm(x)
         output = self.output_layer(x)

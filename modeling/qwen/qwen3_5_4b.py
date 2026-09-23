@@ -1,14 +1,3 @@
-"""A readable, text-only Qwen3.5-4B, using only PyTorch.
-
-Defaults match https://huggingface.co/Qwen/Qwen3.5-4B/blob/main/config.json
-Architecture reference:
-https://github.com/huggingface/transformers/tree/main/src/transformers/models/qwen3_5
-
-The constructor creates random weights; from_pretrained() loads official weights.
-No vision encoder, KV cache, or optimized DeltaNet kernels: each forward processes
-the entire input sequence.
-"""
-
 import math
 
 import torch
@@ -569,23 +558,3 @@ class Qwen3_5Model(nn.Module):
         for block in self.transformer_blocks:
             x = block(x, mask)
         return self.final_norm(x)
-
-
-if __name__ == "__main__":
-    # A tiny instance exercises a full four-layer cycle without allocating 4B weights.
-    model = Qwen3_5Model(
-        vocab_size=128,
-        embed_dim=64,
-        hidden_dim=128,
-        context_len=32,
-        num_heads=4,
-        num_kv_groups=2,
-        head_dim=16,
-        num_attn_blocks=4,
-        linear_num_key_heads=2,
-        linear_num_value_heads=4,
-        linear_key_head_dim=16,
-        linear_value_head_dim=16,
-    )
-    tokens = torch.randint(0, 128, (2, 8))
-    print(model(tokens).shape)  # torch.Size([2, 8, 128])
