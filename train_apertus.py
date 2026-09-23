@@ -1,5 +1,6 @@
 """Minimal JevType training: frozen Apertus + LoRA + an option pointer head."""
 
+import json
 import os
 from functools import partial
 
@@ -17,13 +18,13 @@ from modeling.jev import JevModel, PointerHead
 DATA_DIR = "data"
 BASE_MODEL = "swiss-ai/Apertus-v1.5-8B"
 BASE_REVISION = "main"
-DEVICE = "cuda:4"
-EPOCHS = 1
-BATCH_SIZE = 4
+DEVICE = "cuda:0"
+EPOCHS = 4
+BATCH_SIZE = 16
 LORA_RANK = 16
 LEARNING_RATE = 5e-5
 SEED = 0
-OUTPUT_DIR = "runs/jevpertus"
+OUTPUT_DIR = "runs/jevpertus_V2"
 
 
 def build_model(
@@ -120,49 +121,85 @@ def main():
 
     optimizer = torch.optim.AdamW(parameters, lr=LEARNING_RATE, weight_decay=0.01)
 
-    for epoch in range(EPOCHS):
-        model.train()
-        total_loss = 0.0
-        seen = 0
-        for batch in train_loader:
-            batch = batch_to_device(batch, DEVICE)
-            examples = batch["examples"]
+    step = 0
+    # Line buffering keeps completed steps on disk even if training is interrupted.
+    with open(
+        os.path.join(OUTPUT_DIR, "loss_history.jsonl"),
+        "w",
+        encoding="utf-8",
+        buffering=1,
+    ) as history:
+        for epoch in range(EPOCHS):
+            model.train()
+            total_loss = 0.0
+            seen = 0
+            for batch in train_loader:
+                batch = batch_to_device(batch, DEVICE)
+                examples = batch["examples"]
 
-            optimizer.zero_grad(set_to_none=True)
-            logits = model.forward_batch(batch)
-            losses = question_losses(logits, examples)
-            total_loss += losses.sum().item()
-            seen += len(examples)
-            losses.mean().backward()
+                optimizer.zero_grad(set_to_none=True)
+                logits = model.forward_batch(batch)
+                losses = question_losses(logits, examples)
+                batch_loss = losses.sum().item() / len(examples)
+                total_loss += batch_loss * len(examples)
+                seen += len(examples)
+                losses.mean().backward()
 
-            optimizer.step()
+                optimizer.step()
+                step += 1
+                history.write(
+                    json.dumps(
+                        {
+                            "split": "train",
+                            "epoch": epoch + 1,
+                            "step": step,
+                            "questions": seen,
+                            "batch_size": len(examples),
+                            "loss": batch_loss,
+                            "epoch_loss": total_loss / seen,
+                        }
+                    )
+                    + "\n"
+                )
 
-            print(
-                f"epoch {epoch + 1} questions {seen}/{len(train)} loss {total_loss / seen:.4f}",
-                end="\r",
-                flush=True,
+                print(
+                    f"epoch {epoch + 1} questions {seen}/{len(train)} loss {total_loss / seen:.4f}",
+                    end="\r",
+                    flush=True,
+                )
+
+            dev_loss, accuracy = evaluate(model, dev_loader, DEVICE)
+            history.write(
+                json.dumps(
+                    {
+                        "split": "development",
+                        "epoch": epoch + 1,
+                        "step": step,
+                        "loss": dev_loss,
+                        "accuracy": accuracy,
+                    }
+                )
+                + "\n"
             )
 
-        dev_loss, accuracy = evaluate(model, dev_loader, DEVICE)
+            print(
+                f"epoch {epoch + 1}: development loss {dev_loss:.4f}, accuracy {accuracy:.3%}"
+            )
 
-        print(
-            f"epoch {epoch + 1}: development loss {dev_loss:.4f}, accuracy {accuracy:.3%}"
-        )
-
-        model.save_pretrained(
-            OUTPUT_DIR,
-            backbone_config={
-                "model_id": BASE_MODEL,
-                "revision": BASE_REVISION,
-            },
-            training_config={
-                "data": DATA_DIR,
-                "epochs": EPOCHS,
-                "batch_size": BATCH_SIZE,
-                "lr": LEARNING_RATE,
-                "seed": SEED,
-            },
-        )
+            model.save_pretrained(
+                OUTPUT_DIR,
+                backbone_config={
+                    "model_id": BASE_MODEL,
+                    "revision": BASE_REVISION,
+                },
+                training_config={
+                    "data": DATA_DIR,
+                    "epochs": EPOCHS,
+                    "batch_size": BATCH_SIZE,
+                    "lr": LEARNING_RATE,
+                    "seed": SEED,
+                },
+            )
 
 
 if __name__ == "__main__":
