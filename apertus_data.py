@@ -63,7 +63,10 @@ def encode_question(state, question, tokenizer, max_length=1024, max_state=384):
         raise ContextOverflow("State exceeds max_state")
     options, keys, label = question_options(question)
     ids += [special["question"]]
-    ids += tokenizer.encode(question["instructions"], add_special_tokens=False)
+    instructions = question["instructions"]
+    if not isinstance(instructions, str):
+        instructions = json.dumps(instructions, ensure_ascii=False, sort_keys=True)
+    ids += tokenizer.encode(instructions, add_special_tokens=False)
     ends = []
     for option in options:
         ids += [special["option_start"]]

@@ -16,7 +16,7 @@ from modeling.jev import JevModel, PointerHead
 DATA_DIR = "data"
 BASE_MODEL = "swiss-ai/Apertus-v1.5-8B"
 BASE_REVISION = "main"
-DEVICE = "cuda"
+DEVICE = "cuda:4"
 EPOCHS = 1
 LORA_RANK = 16
 LEARNING_RATE = 5e-5
@@ -77,9 +77,11 @@ def main():
 
     tokenizer = AutoTokenizer.from_pretrained(BASE_MODEL, revision=BASE_REVISION)
 
+    print(f"Loading training data from {DATA_DIR}...")
     train = load_examples(os.path.join(DATA_DIR, "train.jsonl"), tokenizer)
     development = load_examples(os.path.join(DATA_DIR, "development.jsonl"), tokenizer)
 
+    print("Building model...")
     model = build_model(BASE_MODEL, BASE_REVISION, DEVICE, LORA_RANK)
 
     parameters = [p for p in model.parameters() if p.requires_grad]
@@ -123,7 +125,10 @@ def main():
         model.save_pretrained(
             OUTPUT_DIR,
             tokenizer,
-            backbone_config={"model_id": BASE_MODEL, "revision": BASE_REVISION},
+            backbone_config={
+                "model_id": BASE_MODEL,
+                "revision": BASE_REVISION,
+            },
             training_config={
                 "data": DATA_DIR,
                 "epochs": EPOCHS,
