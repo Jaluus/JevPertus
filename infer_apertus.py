@@ -7,11 +7,11 @@ import torch
 from transformers import AutoTokenizer
 
 from dataloader import Question, encode_question
-from modeling.apertus import load_apertus, ApertusModel
+from modeling.apertus import load_apertus
 from modeling.jev import JevModel
 
-CHECKPOINT = "runs/jevpertus_V2/epoch_3"
-DEVICE = "cuda:3" if torch.cuda.is_available() else "cpu"
+CHECKPOINT = "runs/jevpertus_V4/epoch_2"
+DEVICE = "cuda:2" if torch.cuda.is_available() else "cpu"
 QUESTIONS: list[Question] = [
     {
         "type": "choice",
@@ -45,6 +45,26 @@ QUESTIONS: list[Question] = [
 ]
 
 
+def print_probabilities(question: Question, probabilities: torch.Tensor):
+    """Print the probabilities of each option for a given question."""
+
+    print(f"Context: {question['state']}")
+    print(f"Question: {question['instructions']}")
+
+    if question["type"] == "choice":
+        for key, value, prob in zip(
+            question["criteria"].keys(), question["criteria"].values(), probabilities
+        ):
+            print(f"Option {key} ({value}): {prob:.2f}")
+
+    elif question["type"] == "score":
+        for criterion, prob in zip(question["criteria"], probabilities):
+            print(f"Score '{criterion}': {prob:.2f}")
+
+    elif question["type"] == "noul":
+        print(f"Probability of statement being true: {probabilities[0]:.2f}")
+
+
 def main():
     with open(os.path.join(CHECKPOINT, "jev_config.json"), encoding="utf-8") as file:
         config = json.load(file)
@@ -52,6 +72,7 @@ def main():
         config["backbone"]["model_id"],
         revision=config["backbone"].get("revision"),
     )
+
     model = JevModel.from_pretrained(
         CHECKPOINT,
         llm_loader=load_apertus,
@@ -60,8 +81,10 @@ def main():
     )
 
     for question in QUESTIONS:
-        encoded_question = encode_question(question, tokenizer)
-        print(model.predict(encoded_question))
+        encoded_question = encode_question(question, tokenizer, device=DEVICE)
+        probabilities = model.predict(encoded_question)
+        print_probabilities(question, probabilities)
+        print("-" * 80)
 
 
 if __name__ == "__main__":

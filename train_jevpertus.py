@@ -19,7 +19,7 @@ from modeling.jev import build_jev
 DATA_DIR = "data"
 BASE_MODEL = "swiss-ai/Apertus-v1.5-8B"
 DEVICE = "cuda:2"
-EPOCHS = 5
+EPOCHS = 2
 BATCH_SIZE = 1
 LORA_RANK = 16
 LEARNING_RATE = 5e-5

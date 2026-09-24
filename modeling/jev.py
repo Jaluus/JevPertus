@@ -74,6 +74,11 @@ class JevModel(nn.Module):
             for row, example in zip(hidden, batch["examples"])
         ]
 
+    def predict(self, example: EncodedQuestion) -> torch.Tensor:
+        """Return probabilities for each option in a single question."""
+        logits = self.forward(example)
+        return torch.softmax(logits, dim=0)
+
     def save_pretrained(
         self,
         directory,
