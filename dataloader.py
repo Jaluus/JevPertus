@@ -3,14 +3,14 @@
 import json
 import os
 from functools import partial
-from typing import NotRequired, TypedDict
+from typing import Literal, NotRequired, TypedDict
 
 import torch
 from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import DataLoader
 
 SPECIAL_TOKENS = {
-    "context": "<SPECIAL_100>",
+    "state": "<SPECIAL_100>",
     "question": "<SPECIAL_101>",
     "option_start": "<SPECIAL_102>",
     "option_end": "<SPECIAL_103>",
@@ -18,14 +18,32 @@ SPECIAL_TOKENS = {
 }
 
 
+class Question(TypedDict):
+    """Raw training/inference question, before tokenization.
+
+    Choice criteria map answer keys to descriptions; score criteria list options
+    in order. Noul criteria optionally describe the "false" and "true" answers.
+    Labels are zero-based option indices; noul uses 0 for false and 1 for true.
+    Omit the label for inference.
+    """
+
+    type: Literal["choice", "score", "noul"]
+    state: str  # The State the question is asked in.
+    instructions: str  # The actual question text
+    criteria: NotRequired[dict[str, str | None] | list[str] | None]
+    label: NotRequired[int]
+
+
 class QuestionExample(TypedDict):
     """One encoded question; option metadata indexes the unpadded token row."""
 
-    ids: list[int] | torch.Tensor  # [tokens]; inference uses a 1D long tensor.
+    ids: torch.Tensor  # [tokens]; inference uses a 1D long tensor.
     option_ends: list[int]  # Token index of each option's end delimiter.
     decide: int  # Token index of the final decision delimiter.
-    label: int | None  # Zero-based option index; None for unlabelled inference.
-    keys: list[str | bool | int]  # Answer values in the same order as options.
+    label: NotRequired[int]  # Zero-based option index; omitted for inference.
+    keys: (
+        list[str] | list[bool] | list[int]
+    )  # Answer values in the same order as options.
     qid: NotRequired[str]  # Source question ID, added when loading JSONL data.
 
 
@@ -38,7 +56,8 @@ class QuestionBatch(TypedDict):
 
 
 def collate_questions(
-    examples: list[QuestionExample], pad_id: int = 0
+    examples: list[QuestionExample],
+    pad_id: int = 0,
 ) -> QuestionBatch:
     """Pad token rows on CPU, retaining each question's option metadata."""
     rows = [torch.as_tensor(example["ids"], dtype=torch.long) for example in examples]
@@ -48,20 +67,30 @@ def collate_questions(
     return {"ids": ids, "mask": mask, "examples": examples}
 
 
-def batch_to_device(batch: QuestionBatch, device: str | torch.device) -> QuestionBatch:
+def batch_to_device(
+    batch: QuestionBatch,
+    device: str | torch.device,
+) -> QuestionBatch:
     """Move batch tensors while leaving Python metadata on the CPU."""
     return {**batch, "ids": batch["ids"].to(device), "mask": batch["mask"].to(device)}
 
 
-def question_options(question):
+def parse_options(
+    question: Question,
+) -> tuple[
+    list[str],
+    list[str] | list[bool] | list[int],
+    int | None,
+]:
     """Return option text, answer keys, and an optional training label."""
     kind = question["type"]
     criteria = question.get("criteria") or {}
 
     if kind == "choice":
         keys = list(criteria)
-        options = [f"{key}: {criteria[key]}" if criteria[key] else key for key in keys]
-        label = keys.index(question["label"]) if "label" in question else None
+        options = [
+            f"{key}: {criteria[key]}" if criteria.get(key) else key for key in keys
+        ]
 
     elif kind == "noul":
         keys = [False, True]
@@ -69,19 +98,15 @@ def question_options(question):
             f"{key}: {criteria[key]}" if criteria.get(key) else key
             for key in ["false", "true"]
         ]
-        label = int(question["label"]) if "label" in question else None
 
     elif kind == "score":
         options = list(criteria)
         keys = list(range(len(options)))
-        label = question.get("label")  # Score labels are already zero-based indices.
 
     else:
         raise ValueError(f"Unknown question type: {kind}")
 
-    if not options or (label is not None and not 0 <= label < len(options)):
-        raise ValueError("Question has no options or an invalid label")
-    return options, keys, label
+    return options, keys, question.get("label")
 
 
 class ContextOverflow(ValueError):
@@ -89,99 +114,118 @@ class ContextOverflow(ValueError):
 
 
 def encode_question(
-    state,
-    question,
+    question: Question,
     tokenizer,
-    max_length=1024,
-    max_state=384,
+    device: str | torch.device = "cpu",
 ) -> QuestionExample:
     """Shared training/inference encoding; inference questions need no label."""
+
     special = {
         name: tokenizer.convert_tokens_to_ids(token)
         for name, token in SPECIAL_TOKENS.items()
     }
-    if tokenizer.unk_token_id in special.values() or len(set(special.values())) != 5:
-        raise ValueError(
-            "Tokenizer must contain the five distinct Apertus delimiter tokens"
-        )
-    if not isinstance(state, str):
-        state = json.dumps(state, ensure_ascii=False, sort_keys=True)
-    ids = [special["context"]] + tokenizer.encode(state, add_special_tokens=False)
-    if len(ids) > max_state:
-        raise ContextOverflow("State exceeds max_state")
-    options, keys, label = question_options(question)
+
+    ids = [special["state"]]
+    ids += tokenizer.encode(question["state"], add_special_tokens=False)
+
+    options, keys, label = parse_options(question)
+
     ids += [special["question"]]
-    instructions = question["instructions"]
-    if not isinstance(instructions, str):
-        instructions = json.dumps(instructions, ensure_ascii=False, sort_keys=True)
-    ids += tokenizer.encode(instructions, add_special_tokens=False)
-    ends = []
+    ids += tokenizer.encode(question["instructions"], add_special_tokens=False)
+
+    option_idxs = []
     for option in options:
         ids += [special["option_start"]]
         ids += tokenizer.encode(option, add_special_tokens=False)
         ids += [special["option_end"]]
-        ends.append(len(ids) - 1)
+        option_idxs.append(len(ids) - 1)
+
     ids += [special["decide"]]
-    if len(ids) > max_length:
-        raise ContextOverflow("Question exceeds max_length")
-    return {
+
+    ids = torch.as_tensor(ids, dtype=torch.long, device=device)
+
+    example: QuestionExample = {
         "ids": ids,
-        "option_ends": ends,
+        "option_ends": option_idxs,
         "decide": len(ids) - 1,
-        "label": label,
         "keys": keys,
     }
+    if label is not None:
+        example["label"] = label
+    return example
 
 
-def load_examples(
-    path, tokenizer, max_length=1024, max_state=384
-) -> list[QuestionExample]:
+def load_examples(path, tokenizer) -> list[QuestionExample]:
     """Read labelled questions; report over-limit rows instead of truncating.
 
     Labels and metadata never enter the model input. Options stay in data order.
     Each row repeats the state, so questions cannot attend to each other.
     """
     examples, skipped = [], 0
+    for qid, question in load_questions(path):
+        example = encode_question(question, tokenizer)
+        examples.append({**example, "qid": qid})
+
+    print(
+        f"{path}: loaded {len(examples)} questions; skipped {skipped} over token limits"
+    )
+    return examples
+
+
+def load_questions(path: str) -> list[Question]:
+    """Read raw JSONL questions, converting legacy labels to option indices."""
+    questions = []
+
     with open(path) as file:
         for line in file:
             if not line.strip():
                 continue
+
             record = json.loads(line)
-            for qid, question in record["questions"].items():
-                if "label" not in question:
+            state = record["state"]
+
+            if not isinstance(state, str):
+                state = json.dumps(state, ensure_ascii=False, sort_keys=True)
+
+            for qid, raw in record["questions"].items():
+
+                if "label" not in raw:
                     raise ValueError(f"Training question {qid} is missing its label")
-                try:
-                    example = encode_question(
-                        record["state"], question, tokenizer, max_length, max_state
+
+                label = raw["label"]
+                instructions = raw["instructions"]
+                type_ = raw["type"]
+
+                if type_ == "choice" and isinstance(label, str):
+                    label = list(raw["criteria"]).index(label)
+
+                elif type_ == "noul" and isinstance(label, bool):
+                    label = int(label)
+
+                if not isinstance(instructions, str):
+                    instructions = json.dumps(
+                        instructions, ensure_ascii=False, sort_keys=True
                     )
-                except ContextOverflow:
-                    skipped += 1
-                    continue
-                if example["label"] is None:
-                    raise ValueError(f"Training question {qid} has no label")
-                examples.append({**example, "qid": qid})
-    print(
-        f"{path}: loaded {len(examples)} questions; skipped {skipped} over token limits"
-    )
-    if not examples:
-        raise ValueError(f"No usable questions in {path}")
-    return examples
+
+                question: Question = {
+                    "type": type_,
+                    "state": state,
+                    "instructions": instructions,
+                    "label": label,
+                    "criteria": raw.get("criteria"),
+                }
+
+                questions.append(question)
+    return questions
 
 
 def build_trainloader(
     data_dir,
     tokenizer,
     batch_size=8,
-    max_length=1024,
-    max_state=384,
     seed=42,
 ):
-    trainset = load_examples(
-        os.path.join(data_dir, "train.jsonl"),
-        tokenizer,
-        max_length,
-        max_state,
-    )
+    trainset = load_examples(os.path.join(data_dir, "train.jsonl"), tokenizer)
 
     pad_id = tokenizer.pad_token_id if tokenizer.pad_token_id is not None else 0
 
@@ -200,15 +244,8 @@ def build_testloader(
     data_dir,
     tokenizer,
     batch_size=8,
-    max_length=1024,
-    max_state=384,
 ):
-    testset = load_examples(
-        os.path.join(data_dir, "test.jsonl"),
-        tokenizer,
-        max_length,
-        max_state,
-    )
+    testset = load_examples(os.path.join(data_dir, "test.jsonl"), tokenizer)
 
     pad_id = tokenizer.pad_token_id if tokenizer.pad_token_id is not None else 0
 
