@@ -14,9 +14,10 @@ from peft import (
 )
 from torch import nn
 
+from dataloader import EncodedQuestion, QuestionBatch
+
 from .apertus import ApertusModel, load_apertus
 from .pointerhead import PointerHead
-from dataloader import EncodedQuestion, QuestionBatch
 
 
 class JevModel(nn.Module):
