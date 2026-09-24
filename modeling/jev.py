@@ -12,7 +12,7 @@ from peft import (
 )
 from torch import nn
 
-from .apertus import load_apertus
+from .apertus import load_apertus, ApertusModel
 from .pointerhead import PointerHead
 from dataloader import QuestionBatch, EncodedQuestion
 
@@ -30,47 +30,47 @@ class JevModel(nn.Module):
 
     def __init__(
         self,
-        llm_backbone,
+        llm_backbone: ApertusModel,
         pointerhead: PointerHead,
     ):
         super().__init__()
-        self.backbone = llm_backbone
-        self.head = pointerhead
+        self.llm_backbone = llm_backbone
+        self.pointerhead = pointerhead
 
     def add_lora(self, config):
 
-        self.backbone = inject_adapter_in_model(config, self.backbone)
-        for parameter in self.backbone.parameters():
+        inject_adapter_in_model(config, self.llm_backbone)
+
+        # We keep precision for the backbone, but the LoRA weights are in float32.
+        # The pointer head is also in float32, since it is small and we want to avoid precision loss.
+        for parameter in self.llm_backbone.parameters():
             if parameter.requires_grad:
                 parameter.data = parameter.data.float()
         return self
 
     def forward(self, example: EncodedQuestion) -> torch.Tensor:
-        hidden = self.backbone.partial_forward(example["ids"].unsqueeze(0))[0]
-        decide = hidden[example["decide_idx"]]
-        options = hidden[example["option_idxs"]]
-        return self.head(decide, options)
+
+        # Unsqueeze to add a batch dimension, since the backbone expects [batch, tokens].
+        token_ids = example["ids"].unsqueeze(0)
+
+        hidden = self.llm_backbone.partial_forward(token_ids)[0]
+
+        decide_state = hidden[example["decide_idx"]]
+        option_states = hidden[example["option_idxs"]]
+        return self.pointerhead(decide_state, option_states)
 
     def forward_batch(self, batch: QuestionBatch) -> list[torch.Tensor]:
         """Run one backbone pass and return logits per question.
 
         Option counts may differ, so the small pointer head runs per question.
         """
-        hidden = self.backbone.partial_forward(batch["ids"], mask=batch["mask"])
+
+        hidden = self.llm_backbone.partial_forward(batch["ids"], mask=batch["mask"])
+
         return [
-            self.head(row[example["decide_idx"]], row[example["option_idxs"]])
+            self.pointerhead(row[example["decide_idx"]], row[example["option_idxs"]])
             for row, example in zip(hidden, batch["examples"])
         ]
-
-    @torch.no_grad()
-    def predict(self, example: EncodedQuestion):
-        self.eval()
-        probabilities = self(example).float().softmax(-1)
-        return {
-            "answer": example["keys"][probabilities.argmax().item()],
-            "keys": example["keys"],
-            "probabilities": probabilities.cpu().tolist(),
-        }
 
     def save_pretrained(
         self,
@@ -86,23 +86,24 @@ class JevModel(nn.Module):
         """
 
         os.makedirs(directory, exist_ok=True)
-        self.backbone.peft_config["default"].save_pretrained(directory)
+
+        self.llm_backbone.peft_config["default"].save_pretrained(directory)
+
         config = {
             "backbone": backbone_config,
-            "head": self.head.config,
+            "head": self.pointerhead.config,
             "training": training_config or {},
         }
-        with open(
-            os.path.join(directory, "jev_config.json"),
-            "w",
-            encoding="utf-8",
-        ) as f:
+
+        config_path = os.path.join(directory, "jev_config.json")
+        with open(config_path, "w", encoding="utf-8") as f:
             json.dump(config, f, indent=2)
             f.write("\n")
+
         torch.save(
             {
-                "adapter": get_peft_model_state_dict(self.backbone),
-                "head": self.head.state_dict(),
+                "adapter": get_peft_model_state_dict(self.llm_backbone),
+                "head": self.pointerhead.state_dict(),
             },
             os.path.join(directory, "jev.pt"),
         )
@@ -131,8 +132,8 @@ class JevModel(nn.Module):
         weight_path = os.path.join(directory, "jev.pt")
         weights = torch.load(weight_path, map_location="cpu", weights_only=True)
 
-        set_peft_model_state_dict(model.backbone, weights["adapter"])
-        model.head.load_state_dict(weights["head"])
+        set_peft_model_state_dict(model.llm_backbone, weights["adapter"])
+        model.pointerhead.load_state_dict(weights["head"])
         return model.eval()
 
 
@@ -160,7 +161,8 @@ def build_jev(
     )
 
     pointerhead = PointerHead(llm_backbone.input_layer.embedding_dim).to(
-        device=device, dtype=torch.float32
+        device=device,
+        dtype=torch.float32,
     )
 
     return JevModel(llm_backbone, pointerhead).add_lora(lora_config)

@@ -213,7 +213,11 @@ class ApertusModel(nn.Module):
             bias=False,
         )
 
-    def forward(self, x, mask=None):
+    def forward(
+        self,
+        x: torch.Tensor,
+        mask: torch.Tensor = None,
+    ) -> torch.Tensor:
         """Token IDs (batch, tokens) -> logits (batch, tokens, vocab_size)."""
         logits = self.output_layer(self.partial_forward(x, mask))
         # V1.5's input-only image/audio IDs have no output-head rows.
@@ -223,7 +227,11 @@ class ApertusModel(nn.Module):
             value=torch.finfo(logits.dtype).min,
         )
 
-    def partial_forward(self, x, mask=None):
+    def partial_forward(
+        self,
+        x: torch.Tensor,
+        mask: torch.Tensor = None,
+    ) -> torch.Tensor:
         """Token IDs (batch, tokens) -> final normalized hidden states.
 
         Optional mask: (batch, tokens), 1 for real tokens and 0 for right padding.

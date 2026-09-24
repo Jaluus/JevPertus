@@ -105,10 +105,6 @@ def parse_options(
     return options, keys, question.get("label")
 
 
-class ContextOverflow(ValueError):
-    """A question exceeds the chosen input budget; no content is truncated."""
-
-
 def encode_question(
     question: Question,
     tokenizer,

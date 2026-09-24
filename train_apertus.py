@@ -18,24 +18,28 @@ from modeling.jev import build_jev
 # Edit these constants before running: python train_apertus.py
 DATA_DIR = "data"
 BASE_MODEL = "swiss-ai/Apertus-v1.5-8B"
-DEVICE = "cuda:0"
-EPOCHS = 1
-BATCH_SIZE = 4
+DEVICE = "cuda:2"
+EPOCHS = 5
+BATCH_SIZE = 1
 LORA_RANK = 16
 LEARNING_RATE = 5e-5
 SEED = 0
-OUTPUT_DIR = "runs/jevpertus_V3"
+OUTPUT_DIR = "runs/jevpertus_V4"
 
 
 def question_losses(
-    logits: list[torch.Tensor], examples: list[EncodedQuestion]
+    logits: list[torch.Tensor],
+    examples: list[EncodedQuestion],
 ) -> torch.Tensor:
     """One cross-entropy per question, allowing different option counts."""
     return torch.stack(
         [
             F.cross_entropy(
                 scores[None].float(),
-                torch.tensor([example["label"]], device=scores.device),
+                torch.tensor(
+                    [example["label"]],
+                    device=scores.device,
+                ),
             )
             for scores, example in zip(logits, examples)
         ]
@@ -88,7 +92,11 @@ def main():
     print(f"Loading training data from {DATA_DIR}...")
 
     print("Building model...")
-    model = build_jev(BASE_MODEL, DEVICE, LORA_RANK)
+    model = build_jev(
+        base_model=BASE_MODEL,
+        lora_rank=LORA_RANK,
+        device=DEVICE,
+    )
 
     parameters = [p for p in model.parameters() if p.requires_grad]
     print(f"Trainable parameters: {sum(p.numel() for p in parameters):,}")
