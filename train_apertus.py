@@ -11,7 +11,7 @@ from torch.utils.data import DataLoader
 from transformers import AutoTokenizer
 
 from apertus_data import batch_to_device, collate_questions, load_examples
-from modeling.apertus.apertus_8b import ApertusModel
+from modeling.apertus import load_apertus
 from modeling.jev import JevModel, PointerHead
 
 # Edit these constants before running: python train_apertus.py
@@ -19,12 +19,12 @@ DATA_DIR = "data"
 BASE_MODEL = "swiss-ai/Apertus-v1.5-8B"
 BASE_REVISION = "main"
 DEVICE = "cuda:0"
-EPOCHS = 4
+EPOCHS = 1
 BATCH_SIZE = 4
 LORA_RANK = 16
 LEARNING_RATE = 5e-5
 SEED = 0
-OUTPUT_DIR = "runs/jevpertus_V2"
+OUTPUT_DIR = "runs/jevpertus_V3"
 
 
 def build_model(
@@ -35,7 +35,7 @@ def build_model(
 ):
     dtype = torch.bfloat16 if torch.device(device).type == "cuda" else torch.float32
 
-    backbone = ApertusModel.from_pretrained(
+    backbone = load_apertus(
         base,
         revision=revision,
         device=device,

@@ -1,17 +1,22 @@
-"""Apertus V1.5 text checkpoint loading and parameter-name mapping."""
+"""Build Apertus text models from original or V1.5 Hugging Face checkpoints."""
 
 import json
 import os
 
 import torch
 import torch.nn as nn
+from huggingface_hub import hf_hub_download, snapshot_download
+from safetensors import safe_open
+
+from .apertus import ApertusModel
 
 
-def checkpoint_names(model):
-    """Map our readable parameter names to the official V1.5 checkpoint names."""
+def checkpoint_names(model, model_type="apertus1p5"):
+    """Map our parameter names to the appropriate checkpoint layout."""
+    prefix = "model.language_model" if model_type == "apertus1p5" else "model"
     names = {
-        "input_layer.weight": "model.language_model.embed_tokens.weight",
-        "final_norm.weight": "model.language_model.norm.weight",
+        "input_layer.weight": f"{prefix}.embed_tokens.weight",
+        "final_norm.weight": f"{prefix}.norm.weight",
         "output_layer.weight": "lm_head.weight",
     }
     block = {
@@ -31,15 +36,14 @@ def checkpoint_names(model):
     for i in range(len(model.transformer_blocks)):
         names.update(
             {
-                f"transformer_blocks.{i}.{ours}": f"model.language_model.layers.{i}.{official}"
+                f"transformer_blocks.{i}.{ours}": f"{prefix}.layers.{i}.{official}"
                 for ours, official in block.items()
             }
         )
     return names
 
 
-def load_pretrained(
-    model_class,
+def load_apertus(
     model_id="swiss-ai/Apertus-v1.5-8B",
     *,
     device="cpu",
@@ -47,19 +51,20 @@ def load_pretrained(
     cache_dir=None,
     revision="main",
 ):
-    """Load an official unquantized checkpoint from Hugging Face or a folder.
+    """Build and load an original or V1.5 Apertus text model from an HF ID or folder.
+
+    Model dimensions (including 8B/70B) are read from the checkpoint config.
+    Returns the model in evaluation mode on the selected device.
 
     Requires `pip install huggingface_hub safetensors` and Hugging Face access
     to the gated V1.5 repository. Uses your saved HF login or HF_TOKEN.
     Only text tensors are loaded; image/audio tokenizers are skipped.
     """
-    from safetensors import safe_open
 
     if not dtype.is_floating_point or torch.device(device).type == "meta":
         raise ValueError("Use a floating-point dtype and a real device")
     folder = os.fspath(model_id)
     if not os.path.isdir(folder):
-        from huggingface_hub import snapshot_download
 
         # Resolve metadata first; use its immutable revision for the shards.
         folder = snapshot_download(
@@ -72,25 +77,33 @@ def load_pretrained(
 
     with open(os.path.join(folder, "config.json"), encoding="utf-8") as file:
         config = json.load(file)
-    c = config["text_config"]
-    rope = c["rope_parameters"]
+    model_type = config.get("model_type")
+    if model_type == "apertus1p5":
+        c = config.get("text_config", {})
+        if c.get("model_type") != "apertus1p5_text":
+            raise ValueError("Expected an Apertus V1.5 text configuration")
+    elif model_type == "apertus":
+        c = config
+    else:
+        raise ValueError(f"Unsupported Apertus model type: {model_type!r}")
+    rope = c.get("rope_parameters") or c.get("rope_scaling") or {}
+    rope_theta = rope.get("rope_theta", c.get("rope_theta"))
     if (
         config.get("quantization_config")
         or c.get("quantization_config")
-        or config.get("model_type") != "apertus1p5"
-        or c.get("model_type") != "apertus1p5_text"
         or c.get("tie_word_embeddings", config.get("tie_word_embeddings", False))
         or c.get("attention_bias", False)
         or c.get("mlp_bias", False)
         or c.get("post_norm", False)
         or not c.get("qk_norm", True)
-        or c["hidden_act"] != "xielu"
-        or c["rms_norm_eps"] != 1e-5
-        or rope["rope_type"] != "llama3"
-        or rope["original_max_position_embeddings"] != 8192
-        or rope["low_freq_factor"] != 1.0
-        or rope["high_freq_factor"] != 4.0
-        or rope["factor"] < 1
+        or c.get("hidden_act") != "xielu"
+        or c.get("rms_norm_eps") != 1e-5
+        or rope.get("rope_type", rope.get("type")) != "llama3"
+        or rope.get("original_max_position_embeddings") != 8192
+        or rope.get("low_freq_factor") != 1.0
+        or rope.get("high_freq_factor") != 4.0
+        or rope.get("factor", 0) < 1
+        or rope_theta is None
     ):
         raise ValueError(
             "Checkpoint architecture is not supported by this text implementation"
@@ -98,7 +111,7 @@ def load_pretrained(
 
     # Meta tensors allocate no storage: pretrained tensors replace them below.
     with torch.device("meta"):
-        model = model_class(
+        model = ApertusModel(
             vocab_size=c["vocab_size"],
             embed_dim=c["hidden_size"],
             hidden_dim=c["intermediate_size"],
@@ -107,11 +120,11 @@ def load_pretrained(
             num_kv_groups=c["num_key_value_heads"],
             head_dim=c.get("head_dim", c["hidden_size"] // c["num_attention_heads"]),
             num_attn_blocks=c["num_hidden_layers"],
-            rope_theta=rope["rope_theta"],
+            rope_theta=rope_theta,
             rope_factor=rope["factor"],
             output_vocab_size=c.get("output_vocab_size"),
         )
-    names = checkpoint_names(model)
+    names = checkpoint_names(model, model_type)
     index = os.path.join(folder, "model.safetensors.index.json")
     if os.path.exists(index):
         with open(index, encoding="utf-8") as file:
@@ -128,7 +141,6 @@ def load_pretrained(
     for filename, entries in shards.items():
         path = os.path.join(folder, filename)
         if not os.path.exists(path) and not os.path.isdir(model_id):
-            from huggingface_hub import hf_hub_download
 
             path = hf_hub_download(
                 str(model_id), filename, revision=revision, cache_dir=cache_dir
