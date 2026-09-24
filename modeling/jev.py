@@ -104,6 +104,7 @@ class JevModel(nn.Module):
             for row, example in zip(hidden, batch["examples"])
         ]
 
+    @torch.inference_mode()
     def predict(self, example: EncodedQuestion) -> torch.Tensor:
         """Compute option probabilities for one question.
 

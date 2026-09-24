@@ -182,7 +182,7 @@ def main():
             history.write(
                 json.dumps(
                     {
-                        "split": "development",
+                        "split": "test",
                         "epoch": epoch + 1,
                         "step": step,
                         "loss": dev_loss,
@@ -193,7 +193,7 @@ def main():
             )
 
             print(
-                f"epoch {epoch + 1}: development loss {dev_loss:.4f}, accuracy {accuracy:.3%}"
+                f"epoch {epoch + 1}: test loss {dev_loss:.4f}, accuracy {accuracy:.3%}"
             )
 
             model.save_pretrained(

@@ -1,0 +1,6 @@
+einops
+huggingface_hub
+peft
+safetensors
+torch
+transformers
