@@ -11,8 +11,10 @@ from peft import (
     set_peft_model_state_dict,
 )
 from torch import nn
-from .pointerhead import PointerHead
+
 from .apertus import load_apertus
+from .pointerhead import PointerHead
+from dataloader import QuestionBatch, QuestionExample
 
 
 class JevModel(nn.Module):
@@ -43,13 +45,13 @@ class JevModel(nn.Module):
                 parameter.data = parameter.data.float()
         return self
 
-    def forward(self, example):
+    def forward(self, example: QuestionExample) -> torch.Tensor:
         hidden = self.backbone.partial_forward(example["ids"].unsqueeze(0))[0]
         decide = hidden[example["decide"]]
         options = hidden[example["option_ends"]]
         return self.head(decide, options)
 
-    def forward_batch(self, batch):
+    def forward_batch(self, batch: QuestionBatch) -> list[torch.Tensor]:
         """Run one backbone pass and return logits per question.
 
         Option counts may differ, so the small pointer head runs per question.
@@ -61,7 +63,7 @@ class JevModel(nn.Module):
         ]
 
     @torch.no_grad()
-    def predict(self, example):
+    def predict(self, example: QuestionExample):
         self.eval()
         probabilities = self(example).float().softmax(-1)
         return {

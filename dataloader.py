@@ -1,12 +1,13 @@
 """Read the repository's labelled JSONL data as one causal row per question."""
 
 import json
+import os
+from functools import partial
+from typing import NotRequired, TypedDict
 
 import torch
 from torch.nn.utils.rnn import pad_sequence
-import os
 from torch.utils.data import DataLoader
-from functools import partial
 
 SPECIAL_TOKENS = {
     "context": "<SPECIAL_100>",
@@ -17,7 +18,28 @@ SPECIAL_TOKENS = {
 }
 
 
-def collate_questions(examples, pad_id=0):
+class QuestionExample(TypedDict):
+    """One encoded question; option metadata indexes the unpadded token row."""
+
+    ids: list[int] | torch.Tensor  # [tokens]; inference uses a 1D long tensor.
+    option_ends: list[int]  # Token index of each option's end delimiter.
+    decide: int  # Token index of the final decision delimiter.
+    label: int | None  # Zero-based option index; None for unlabelled inference.
+    keys: list[str | bool | int]  # Answer values in the same order as options.
+    qid: NotRequired[str]  # Source question ID, added when loading JSONL data.
+
+
+class QuestionBatch(TypedDict):
+    """Right-padded questions; examples retain their original Python metadata."""
+
+    ids: torch.Tensor  # Long [batch_size, max_tokens], padded with pad_id.
+    mask: torch.Tensor  # Bool [batch_size, max_tokens]; True for real tokens.
+    examples: list[QuestionExample]  # One example per tensor row, in order.
+
+
+def collate_questions(
+    examples: list[QuestionExample], pad_id: int = 0
+) -> QuestionBatch:
     """Pad token rows on CPU, retaining each question's option metadata."""
     rows = [torch.as_tensor(example["ids"], dtype=torch.long) for example in examples]
     ids = pad_sequence(rows, batch_first=True, padding_value=pad_id)
@@ -26,7 +48,7 @@ def collate_questions(examples, pad_id=0):
     return {"ids": ids, "mask": mask, "examples": examples}
 
 
-def batch_to_device(batch, device):
+def batch_to_device(batch: QuestionBatch, device: str | torch.device) -> QuestionBatch:
     """Move batch tensors while leaving Python metadata on the CPU."""
     return {**batch, "ids": batch["ids"].to(device), "mask": batch["mask"].to(device)}
 
@@ -72,7 +94,7 @@ def encode_question(
     tokenizer,
     max_length=1024,
     max_state=384,
-):
+) -> QuestionExample:
     """Shared training/inference encoding; inference questions need no label."""
     special = {
         name: tokenizer.convert_tokens_to_ids(token)
@@ -111,7 +133,9 @@ def encode_question(
     }
 
 
-def load_examples(path, tokenizer, max_length=1024, max_state=384):
+def load_examples(
+    path, tokenizer, max_length=1024, max_state=384
+) -> list[QuestionExample]:
     """Read labelled questions; report over-limit rows instead of truncating.
 
     Labels and metadata never enter the model input. Options stay in data order.

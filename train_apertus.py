@@ -7,7 +7,12 @@ import torch
 import torch.nn.functional as F
 from transformers import AutoTokenizer
 
-from dataloader import batch_to_device, build_trainloader, build_testloader
+from dataloader import (
+    QuestionExample,
+    batch_to_device,
+    build_testloader,
+    build_trainloader,
+)
 from modeling.jev import build_jev
 
 # Edit these constants before running: python train_apertus.py
@@ -22,7 +27,9 @@ SEED = 0
 OUTPUT_DIR = "runs/jevpertus_V3"
 
 
-def question_losses(logits, examples):
+def question_losses(
+    logits: list[torch.Tensor], examples: list[QuestionExample]
+) -> torch.Tensor:
     """One cross-entropy per question, allowing different option counts."""
     return torch.stack(
         [
