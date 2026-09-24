@@ -2,19 +2,21 @@
 
 import json
 import os
+from typing import cast
 
 import torch
 from peft import (
     LoraConfig,
+    PeftConfig,
     get_peft_model_state_dict,
     inject_adapter_in_model,
     set_peft_model_state_dict,
 )
 from torch import nn
 
-from .apertus import load_apertus, ApertusModel
+from .apertus import ApertusModel, load_apertus
 from .pointerhead import PointerHead
-from dataloader import QuestionBatch, EncodedQuestion
+from dataloader import EncodedQuestion, QuestionBatch
 
 
 class JevModel(nn.Module):
@@ -87,7 +89,9 @@ class JevModel(nn.Module):
 
         os.makedirs(directory, exist_ok=True)
 
-        self.llm.peft_config["default"].save_pretrained(directory)
+        # PEFT attaches this config mapping dynamically during adapter injection.
+        peft_config = cast(dict[str, PeftConfig], self.llm.peft_config)
+        peft_config["default"].save_pretrained(directory)
 
         config = {
             "backbone": backbone_config,
