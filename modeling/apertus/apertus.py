@@ -1,15 +1,7 @@
-"""Configurable PyTorch Apertus text decoder with original 8B defaults.
-
-Defaults: https://huggingface.co/swiss-ai/Apertus-8B-2509/blob/main/config.json
-"""
-
-import math
-
 import einops
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from .loading import load_pretrained
 
 
 class RoPE(nn.Module):
@@ -35,7 +27,7 @@ class RoPE(nn.Module):
 
         # Apertus uses Llama-3 scaling of the original 8192-token context,
         # with interpolation between the low/high frequency factors 1 and 4.
-        wavelength = 2 * math.pi / inv_freq
+        wavelength = 2 * torch.pi / inv_freq
         blend = ((8192 / wavelength - 1) / 3).clamp(0, 1)
         return inv_freq * (blend + (1 - blend) / self.factor)
 
@@ -134,8 +126,8 @@ class XIELU(nn.Module):
     def __init__(self):
         super().__init__()
         # Each layer learns two scalars, constrained through softplus.
-        self.alpha_p = nn.Parameter(torch.tensor([math.log(math.expm1(0.8))]))
-        self.alpha_n = nn.Parameter(torch.tensor([math.log(math.expm1(0.3))]))
+        self.alpha_p = nn.Parameter(torch.tensor([0.8]).expm1().log())
+        self.alpha_n = nn.Parameter(torch.tensor([0.3]).expm1().log())
 
     def forward(self, x):
         alpha_p = F.softplus(self.alpha_p)
@@ -219,25 +211,6 @@ class ApertusModel(nn.Module):
             embed_dim,
             output_vocab_size or vocab_size,
             bias=False,
-        )
-
-    @classmethod
-    def from_pretrained(
-        cls,
-        model_id="swiss-ai/Apertus-v1.5-8B",
-        *,
-        device="cpu",
-        dtype=torch.bfloat16,
-        cache_dir=None,
-        revision="main",
-    ):
-        return load_pretrained(
-            cls,
-            model_id,
-            device=device,
-            dtype=dtype,
-            cache_dir=cache_dir,
-            revision=revision,
         )
 
     def forward(self, x, mask=None):
