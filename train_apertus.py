@@ -43,6 +43,7 @@ def evaluate(model, loader, device):
     for batch in loader:
         batch = batch_to_device(batch, device)
         examples = batch["examples"]
+
         with torch.autocast(
             device_type=torch.device(device).type,
             dtype=torch.bfloat16,
@@ -50,6 +51,7 @@ def evaluate(model, loader, device):
         ):
             logits = model.forward_batch(batch)
             losses = question_losses(logits, examples)
+
         total_loss += losses.sum().item()
         correct += sum(
             scores.argmax().item() == example["label"]
@@ -87,6 +89,7 @@ def main():
     optimizer = torch.optim.AdamW(parameters, lr=LEARNING_RATE, weight_decay=0.01)
 
     step = 0
+
     # Line buffering keeps completed steps on disk even if training is interrupted.
     with open(
         os.path.join(OUTPUT_DIR, "loss_history.jsonl"),
@@ -94,13 +97,14 @@ def main():
         encoding="utf-8",
         buffering=1,
     ) as history:
+
         for epoch in range(EPOCHS):
             model.train()
             total_loss = 0.0
             seen = 0
+
             for batch in train_loader:
                 batch = batch_to_device(batch, DEVICE)
-                examples = batch["examples"]
 
                 optimizer.zero_grad(set_to_none=True)
                 with torch.autocast(
@@ -109,12 +113,11 @@ def main():
                     enabled=torch.device(DEVICE).type == "cuda",
                 ):
                     logits = model.forward_batch(batch)
-                    losses = question_losses(logits, examples)
+                    losses = question_losses(logits, batch["examples"])
                     loss = losses.mean()
 
-                batch_loss = losses.sum().item() / len(examples)
-                total_loss += batch_loss * len(examples)
-                seen += len(examples)
+                total_loss += loss.item() * BATCH_SIZE
+                seen += BATCH_SIZE
                 loss.backward()
 
                 optimizer.step()
@@ -126,8 +129,8 @@ def main():
                             "epoch": epoch + 1,
                             "step": step,
                             "questions": seen,
-                            "batch_size": len(examples),
-                            "loss": batch_loss,
+                            "batch_size": BATCH_SIZE,
+                            "loss": loss.item(),
                             "epoch_loss": total_loss / seen,
                         }
                     )
