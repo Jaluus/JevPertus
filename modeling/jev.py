@@ -14,7 +14,7 @@ from torch import nn
 
 from .apertus import load_apertus
 from .pointerhead import PointerHead
-from dataloader import QuestionBatch, QuestionExample
+from dataloader import QuestionBatch, EncodedQuestion
 
 
 class JevModel(nn.Module):
@@ -45,10 +45,10 @@ class JevModel(nn.Module):
                 parameter.data = parameter.data.float()
         return self
 
-    def forward(self, example: QuestionExample) -> torch.Tensor:
+    def forward(self, example: EncodedQuestion) -> torch.Tensor:
         hidden = self.backbone.partial_forward(example["ids"].unsqueeze(0))[0]
-        decide = hidden[example["decide"]]
-        options = hidden[example["option_ends"]]
+        decide = hidden[example["decide_idx"]]
+        options = hidden[example["option_idxs"]]
         return self.head(decide, options)
 
     def forward_batch(self, batch: QuestionBatch) -> list[torch.Tensor]:
@@ -58,12 +58,12 @@ class JevModel(nn.Module):
         """
         hidden = self.backbone.partial_forward(batch["ids"], mask=batch["mask"])
         return [
-            self.head(row[example["decide"]], row[example["option_ends"]])
+            self.head(row[example["decide_idx"]], row[example["option_idxs"]])
             for row, example in zip(hidden, batch["examples"])
         ]
 
     @torch.no_grad()
-    def predict(self, example: QuestionExample):
+    def predict(self, example: EncodedQuestion):
         self.eval()
         probabilities = self(example).float().softmax(-1)
         return {

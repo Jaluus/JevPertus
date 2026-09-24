@@ -34,17 +34,13 @@ class Question(TypedDict):
     label: NotRequired[int]
 
 
-class QuestionExample(TypedDict):
+class EncodedQuestion(TypedDict):
     """One encoded question; option metadata indexes the unpadded token row."""
 
     ids: torch.Tensor  # [tokens]; inference uses a 1D long tensor.
-    option_ends: list[int]  # Token index of each option's end delimiter.
-    decide: int  # Token index of the final decision delimiter.
+    option_idxs: list[int]  # Token index of each option's end delimiter.
+    decide_idx: int  # Token index of the final decision delimiter.
     label: NotRequired[int]  # Zero-based option index; omitted for inference.
-    keys: (
-        list[str] | list[bool] | list[int]
-    )  # Answer values in the same order as options.
-    qid: NotRequired[str]  # Source question ID, added when loading JSONL data.
 
 
 class QuestionBatch(TypedDict):
@@ -52,11 +48,11 @@ class QuestionBatch(TypedDict):
 
     ids: torch.Tensor  # Long [batch_size, max_tokens], padded with pad_id.
     mask: torch.Tensor  # Bool [batch_size, max_tokens]; True for real tokens.
-    examples: list[QuestionExample]  # One example per tensor row, in order.
+    examples: list[EncodedQuestion]  # One example per tensor row, in order.
 
 
 def collate_questions(
-    examples: list[QuestionExample],
+    examples: list[EncodedQuestion],
     pad_id: int = 0,
 ) -> QuestionBatch:
     """Pad token rows on CPU, retaining each question's option metadata."""
@@ -117,7 +113,7 @@ def encode_question(
     question: Question,
     tokenizer,
     device: str | torch.device = "cpu",
-) -> QuestionExample:
+) -> EncodedQuestion:
     """Shared training/inference encoding; inference questions need no label."""
 
     special = {
@@ -144,32 +140,14 @@ def encode_question(
 
     ids = torch.as_tensor(ids, dtype=torch.long, device=device)
 
-    example: QuestionExample = {
+    example: EncodedQuestion = {
         "ids": ids,
-        "option_ends": option_idxs,
-        "decide": len(ids) - 1,
-        "keys": keys,
+        "option_idxs": option_idxs,
+        "decide_idx": len(ids) - 1,
     }
     if label is not None:
         example["label"] = label
     return example
-
-
-def load_examples(path, tokenizer) -> list[QuestionExample]:
-    """Read labelled questions; report over-limit rows instead of truncating.
-
-    Labels and metadata never enter the model input. Options stay in data order.
-    Each row repeats the state, so questions cannot attend to each other.
-    """
-    examples, skipped = [], 0
-    for qid, question in load_questions(path):
-        example = encode_question(question, tokenizer)
-        examples.append({**example, "qid": qid})
-
-    print(
-        f"{path}: loaded {len(examples)} questions; skipped {skipped} over token limits"
-    )
-    return examples
 
 
 def load_questions(path: str) -> list[Question]:
@@ -225,12 +203,16 @@ def build_trainloader(
     batch_size=8,
     seed=42,
 ):
-    trainset = load_examples(os.path.join(data_dir, "train.jsonl"), tokenizer)
+
+    train_questions = load_questions(os.path.join(data_dir, "train.jsonl"))
+    encoded_questions = [
+        encode_question(question, tokenizer) for question in train_questions
+    ]
 
     pad_id = tokenizer.pad_token_id if tokenizer.pad_token_id is not None else 0
 
     train_loader = DataLoader(
-        trainset,
+        encoded_questions,
         batch_size=batch_size,
         shuffle=True,
         collate_fn=partial(collate_questions, pad_id=pad_id),
@@ -245,12 +227,15 @@ def build_testloader(
     tokenizer,
     batch_size=8,
 ):
-    testset = load_examples(os.path.join(data_dir, "test.jsonl"), tokenizer)
+    test_questions = load_questions(os.path.join(data_dir, "test.jsonl"))
+    encoded_questions = [
+        encode_question(question, tokenizer) for question in test_questions
+    ]
 
     pad_id = tokenizer.pad_token_id if tokenizer.pad_token_id is not None else 0
 
     test_loader = DataLoader(
-        testset,
+        encoded_questions,
         batch_size=batch_size,
         collate_fn=partial(collate_questions, pad_id=pad_id),
     )
