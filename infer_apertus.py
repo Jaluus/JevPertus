@@ -6,18 +6,43 @@ import os
 import torch
 from transformers import AutoTokenizer
 
-from apertus_data import encode_question
-from modeling.apertus.apertus_8b import ApertusModel
+from dataloader import Question, encode_question
+from modeling.apertus import load_apertus, ApertusModel
 from modeling.jev import JevModel
 
-CHECKPOINT = "runs/jevpertus"
+CHECKPOINT = "runs/jevpertus_V2/epoch_3"
 DEVICE = "cuda:3" if torch.cuda.is_available() else "cpu"
-STATE = "I was charged twice for the same order."
-QUESTION = {
-    "type": "choice",
-    "instructions": "Which department should handle this?",
-    "criteria": {"billing": None, "shipping": None, "returns": None},
-}
+QUESTIONS: list[Question] = [
+    {
+        "type": "choice",
+        "state": "You are a medical expert.",
+        "instructions": "A scientist is studying the properties of myosin-actin interactions in a sample of human muscle tissue. She has identified a drug that selectively inhibits phosphate release by the myosin head. If she gives this drug to a sample of human muscle tissue under physiologic conditions, which of the following steps in cross-bridge cycling will most likely be blocked?",
+        "criteria": {
+            "A": "Myosin head release from actin",
+            "B": "Myosin head cocking",
+            "C": "Exposure of myosin-binding sites on actin",
+            "D": "Myosin head binding to actin",
+            "E": "Power stroke",
+        },
+    },
+    {
+        "type": "score",
+        "state": "You went to a resturant, but got served cold soup, after ordering hot soup.",
+        "instructions": "How would you rate the quality of the service you received?",
+        "criteria": [
+            "Very poor",
+            "Poor",
+            "Average",
+            "Good",
+            "Excellent",
+        ],
+    },
+    {
+        "type": "noul",
+        "state": "You live in New York.",
+        "instructions": "Boston is closer to you than Los Angeles.",
+    },
+]
 
 
 def main():
@@ -29,17 +54,14 @@ def main():
     )
     model = JevModel.from_pretrained(
         CHECKPOINT,
-        backbone_loader=ApertusModel.from_pretrained,
+        backbone_loader=load_apertus,
         device=DEVICE,
         dtype=torch.bfloat16 if DEVICE.startswith("cuda") else torch.float32,
     )
-    example = encode_question(
-        STATE,
-        QUESTION,
-        tokenizer,
-    )
-    example["ids"] = torch.tensor(example["ids"], device=DEVICE)
-    print(model.predict(example))
+
+    for question in QUESTIONS:
+        encoded_question = encode_question(question, tokenizer)
+        print(model.predict(encoded_question))
 
 
 if __name__ == "__main__":
