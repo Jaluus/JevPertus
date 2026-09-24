@@ -54,7 +54,7 @@ def main():
     )
     model = JevModel.from_pretrained(
         CHECKPOINT,
-        backbone_loader=load_apertus,
+        llm_loader=load_apertus,
         device=DEVICE,
         dtype=torch.bfloat16 if DEVICE.startswith("cuda") else torch.float32,
     )

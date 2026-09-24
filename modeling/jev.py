@@ -30,20 +30,20 @@ class JevModel(nn.Module):
 
     def __init__(
         self,
-        llm_backbone: ApertusModel,
+        llm: ApertusModel,
         pointerhead: PointerHead,
     ):
         super().__init__()
-        self.llm_backbone = llm_backbone
+        self.llm = llm
         self.pointerhead = pointerhead
 
     def add_lora(self, config):
 
-        inject_adapter_in_model(config, self.llm_backbone)
+        inject_adapter_in_model(config, self.llm)
 
         # We keep precision for the backbone, but the LoRA weights are in float32.
         # The pointer head is also in float32, since it is small and we want to avoid precision loss.
-        for parameter in self.llm_backbone.parameters():
+        for parameter in self.llm.parameters():
             if parameter.requires_grad:
                 parameter.data = parameter.data.float()
         return self
@@ -53,7 +53,7 @@ class JevModel(nn.Module):
         # Unsqueeze to add a batch dimension, since the backbone expects [batch, tokens].
         token_ids = example["ids"].unsqueeze(0)
 
-        hidden = self.llm_backbone.partial_forward(token_ids)[0]
+        hidden = self.llm.partial_forward(token_ids)[0]
 
         decide_state = hidden[example["decide_idx"]]
         option_states = hidden[example["option_idxs"]]
@@ -65,7 +65,7 @@ class JevModel(nn.Module):
         Option counts may differ, so the small pointer head runs per question.
         """
 
-        hidden = self.llm_backbone.partial_forward(batch["ids"], mask=batch["mask"])
+        hidden = self.llm.partial_forward(batch["ids"], mask=batch["mask"])
 
         return [
             self.pointerhead(row[example["decide_idx"]], row[example["option_idxs"]])
@@ -87,7 +87,7 @@ class JevModel(nn.Module):
 
         os.makedirs(directory, exist_ok=True)
 
-        self.llm_backbone.peft_config["default"].save_pretrained(directory)
+        self.llm.peft_config["default"].save_pretrained(directory)
 
         config = {
             "backbone": backbone_config,
@@ -102,7 +102,7 @@ class JevModel(nn.Module):
 
         torch.save(
             {
-                "adapter": get_peft_model_state_dict(self.llm_backbone),
+                "adapter": get_peft_model_state_dict(self.llm),
                 "head": self.pointerhead.state_dict(),
             },
             os.path.join(directory, "jev.pt"),
@@ -112,7 +112,7 @@ class JevModel(nn.Module):
     def from_pretrained(
         cls,
         directory,
-        backbone_loader,
+        llm_loader,
         head_loader=PointerHead,
         device="cpu",
         dtype=torch.float32,
@@ -125,15 +125,18 @@ class JevModel(nn.Module):
         ) as f:
             config = json.load(f)
 
-        backbone = backbone_loader(**config["backbone"], device=device, dtype=dtype)
+        llm = llm_loader(**config["backbone"], device=device, dtype=dtype)
         head = head_loader(**config["head"]).to(device=device, dtype=dtype)
-        model = cls(backbone, head).add_lora(LoraConfig.from_pretrained(directory))
+        model = cls(llm, head).add_lora(LoraConfig.from_pretrained(directory))
 
-        weight_path = os.path.join(directory, "jev.pt")
-        weights = torch.load(weight_path, map_location="cpu", weights_only=True)
+        jev_weights = torch.load(
+            os.path.join(directory, "jev.pt"),
+            map_location="cpu",
+            weights_only=True,
+        )
 
-        set_peft_model_state_dict(model.llm_backbone, weights["adapter"])
-        model.pointerhead.load_state_dict(weights["head"])
+        set_peft_model_state_dict(model.llm, jev_weights["adapter"])
+        model.pointerhead.load_state_dict(jev_weights["head"])
         return model.eval()
 
 
@@ -145,7 +148,7 @@ def build_jev(
 ):
     dtype = torch.bfloat16 if torch.device(device).type == "cuda" else torch.float32
 
-    llm_backbone = load_apertus(
+    llm = load_apertus(
         base_model,
         device=device,
         dtype=dtype,
@@ -160,9 +163,9 @@ def build_jev(
         target_modules=["w_q", "w_k", "w_v", "w_o", "up", "down"],
     )
 
-    pointerhead = PointerHead(llm_backbone.input_layer.embedding_dim).to(
+    pointerhead = PointerHead(llm.input_layer.embedding_dim).to(
         device=device,
         dtype=torch.float32,
     )
 
-    return JevModel(llm_backbone, pointerhead).add_lora(lora_config)
+    return JevModel(llm, pointerhead).add_lora(lora_config)
