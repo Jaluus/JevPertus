@@ -23,6 +23,8 @@ class RoPE(nn.Module):
         self.rotary_dim = head_dim
         self.theta = theta
         self.factor = factor
+        self.register_buffer("cos_cached", None, persistent=False)
+        self.register_buffer("sin_cached", None, persistent=False)
 
     def _scaled_inverse_frequencies(self, device):
         dimensions = torch.arange(
@@ -36,16 +38,31 @@ class RoPE(nn.Module):
         blend = ((8192 / wavelength - 1) / 3).clamp(0, 1)
         return inv_freq * (blend + (1 - blend) / self.factor)
 
-    def forward(self, x):
-        """Rotate inputs shaped (batch, heads, tokens, head_dim)."""
+    @torch.no_grad()
+    def precompute(self, length, device, dtype):
+        """Prepare reusable tables without adding them to model checkpoints."""
         # Each token position gets one angle per pair of rotary dimensions.
-        positions = torch.arange(x.shape[2], device=x.device, dtype=torch.float32)
-        inv_freq = self._scaled_inverse_frequencies(x.device)
+        positions = torch.arange(length, device=device, dtype=torch.float32)
+        inv_freq = self._scaled_inverse_frequencies(device)
         angles = torch.outer(positions, inv_freq)
 
         # Apertus pairs the first half of each head with the second half.
         angles = einops.repeat(angles, "t d -> t (halves d)", halves=2)
-        cos, sin = angles.cos().to(x.dtype), angles.sin().to(x.dtype)
+        self.cos_cached = angles.cos().to(dtype)
+        self.sin_cached = angles.sin().to(dtype)
+
+    def forward(self, x):
+        """Rotate inputs shaped (batch, heads, tokens, head_dim)."""
+        length = x.shape[2]
+        if (
+            self.cos_cached is None
+            or self.cos_cached.shape[0] < length
+            or self.cos_cached.device != x.device
+            or self.cos_cached.dtype != x.dtype
+        ):
+            self.precompute(length, x.device, x.dtype)
+        cos = self.cos_cached[:length]
+        sin = self.sin_cached[:length]
         first, second = x.chunk(2, dim=-1)
         rotated_half = torch.cat((-second, first), dim=-1)
         return x * cos + rotated_half * sin
