@@ -12,7 +12,17 @@ from .apertus import ApertusModel
 
 
 def checkpoint_names(model, model_type="apertus1p5"):
-    """Map our parameter names to the appropriate checkpoint layout."""
+    """Map local parameter names to checkpoint tensor names.
+
+    Args:
+        model: Apertus model whose transformer blocks determine the layer
+            mappings.
+        model_type: Use "apertus1p5" for the V1.5 prefix; other values use the
+            original Apertus prefix.
+
+    Returns:
+        A dictionary mapping local parameter names to checkpoint names.
+    """
     prefix = "model.language_model" if model_type == "apertus1p5" else "model"
     names = {
         "input_layer.weight": f"{prefix}.embed_tokens.weight",
@@ -51,14 +61,27 @@ def load_apertus(
     cache_dir=None,
     revision="main",
 ):
-    """Build and load an original or V1.5 Apertus text model from an HF ID or folder.
+    """Load an original or V1.5 Apertus text checkpoint.
 
-    Model dimensions (including 8B/70B) are read from the checkpoint config.
-    Returns the model in evaluation mode on the selected device.
+    Model dimensions come from the checkpoint configuration. Only text-model
+    weights are loaded. Remote repositories requiring authentication use the
+    configured Hugging Face credentials.
 
-    Requires `pip install huggingface_hub safetensors` and Hugging Face access
-    to the gated V1.5 repository. Uses your saved HF login or HF_TOKEN.
-    Only text tensors are loaded; image/audio tokenizers are skipped.
+    Args:
+        model_id: Hugging Face repository ID or local checkpoint directory.
+        device: Real device on which to load model parameters.
+        dtype: Floating-point dtype for model parameters.
+        cache_dir: Optional Hugging Face download cache directory.
+        revision: Remote checkpoint revision; ignored for local directories.
+
+    Returns:
+        An ApertusModel in evaluation mode on the requested device and dtype.
+
+    Raises:
+        ValueError: The device or dtype is invalid, the architecture is
+            unsupported, or text weights are missing or have unexpected shapes.
+        RuntimeError: Some model parameters remain on the meta device after
+            loading.
     """
 
     if not dtype.is_floating_point or torch.device(device).type == "meta":

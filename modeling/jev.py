@@ -1,4 +1,4 @@
-"""A language backbone + a pluggable option-scoring head, with LoRA checkpoints."""
+"""Combine an Apertus backbone and option-scoring head with LoRA checkpoints."""
 
 import json
 import os
@@ -21,14 +21,15 @@ from .pointerhead import PointerHead
 
 
 class JevModel(nn.Module):
-    """Backbone: partial_forward(ids) -> [batch, tokens, hidden_dim].
+    """Score question options with an Apertus backbone and pointer head.
 
-    Head: forward(decide, options) -> one logit per option. For saving, the
-    head exposes a JSON-serializable `config` of its constructor arguments.
-    forward scores one question; forward_batch scores an already padded batch
-    whose ids and mask are on the model device.
-    The caller places example["ids"] on the model device as a 1D tensor and
-    initializes the backbone and head with matching device and dtype.
+    Inputs must be on the backbone device. Pointer-head inputs must match its
+    weight dtype; use autocast when the backbone and head have different dtypes.
+
+    Attributes:
+        llm: Backbone providing normalized token hidden states.
+        pointerhead: Option-scoring head with a JSON-serializable constructor
+            config.
     """
 
     def __init__(
@@ -36,12 +37,25 @@ class JevModel(nn.Module):
         llm: ApertusModel,
         pointerhead: PointerHead,
     ):
+        """Attach the backbone and option-scoring head.
+
+        Args:
+            llm: Apertus backbone.
+            pointerhead: Head compatible with the backbone hidden-state width.
+        """
         super().__init__()
         self.llm = llm
         self.pointerhead = pointerhead
 
     def add_lora(self, config):
+        """Inject LoRA adapters and cast trainable backbone weights to float32.
 
+        Args:
+            config: PEFT adapter configuration to inject into the backbone.
+
+        Returns:
+            This model with adapters attached. The pointer-head dtype is unchanged.
+        """
         inject_adapter_in_model(config, self.llm)
 
         # We keep precision for the backbone, but the LoRA weights are in float32.
@@ -54,6 +68,15 @@ class JevModel(nn.Module):
     def forward(self, example: EncodedQuestion) -> torch.Tensor:
 
         # Unsqueeze to add a batch dimension, since the backbone expects [batch, tokens].
+        """Compute option logits for one question.
+
+        Args:
+            example: Encoded question with one-dimensional token IDs on the model
+                device.
+
+        Returns:
+            Unnormalized logits of shape (num_options,).
+        """
         token_ids = example["ids"].unsqueeze(0)
 
         hidden = self.llm.partial_forward(token_ids)[0]
@@ -63,9 +86,15 @@ class JevModel(nn.Module):
         return self.pointerhead(decide_state, option_states)
 
     def forward_batch(self, batch: QuestionBatch) -> list[torch.Tensor]:
-        """Run one backbone pass and return logits per question.
+        """Score a padded batch with one backbone pass.
 
-        Option counts may differ, so the small pointer head runs per question.
+        Args:
+            batch: Right-padded question batch with ids and mask on the model
+                device.
+
+        Returns:
+            One logit tensor of shape (num_options,) per question, in batch order.
+            Option counts may differ.
         """
 
         hidden = self.llm.partial_forward(batch["ids"], mask=batch["mask"])
@@ -76,7 +105,16 @@ class JevModel(nn.Module):
         ]
 
     def predict(self, example: EncodedQuestion) -> torch.Tensor:
-        """Return probabilities for each option in a single question."""
+        """Compute option probabilities for one question.
+
+        This method does not change evaluation mode or disable gradient tracking.
+
+        Args:
+            example: Encoded question on the model device.
+
+        Returns:
+            Probabilities of shape (num_options,) in encoded option order.
+        """
         logits = self.forward(example)
         return torch.softmax(logits, dim=0)
 
@@ -86,11 +124,16 @@ class JevModel(nn.Module):
         backbone_config,
         training_config=None,
     ):
-        """Save adapter + head, not the frozen base or optimizer state.
+        """Save the default LoRA adapter, pointer head, and configuration.
 
-        backbone_config contains keyword arguments for the base weight loader
-        (e.g. model_id and a pinned revision). The caller chooses that loader
-        explicitly when reloading; no classes are dynamically imported.
+        Requires an attached default PEFT adapter. Frozen backbone weights and
+        optimizer state are not saved.
+
+        Args:
+            directory: Output directory, created if needed.
+            backbone_config: JSON-serializable keyword arguments for the backbone
+                loader, such as model_id and revision.
+            training_config: Optional JSON-serializable training metadata.
         """
 
         os.makedirs(directory, exist_ok=True)
@@ -127,7 +170,21 @@ class JevModel(nn.Module):
         device="cpu",
         dtype=torch.float32,
     ):
-        """Recreate base + LoRA + head. Pass the same head class used in training."""
+        """Restore the backbone, LoRA adapter, and pointer head.
+
+        Args:
+            directory: Directory containing a saved Jev checkpoint.
+            llm_loader: Callable accepting the saved backbone config plus device and
+                dtype.
+            head_loader: Head constructor accepting the saved head config; use the
+                class used in training.
+            device: Target device for the restored model.
+            dtype: Dtype for the backbone and head. Trainable backbone parameters
+                are cast to float32 when adapters are attached.
+
+        Returns:
+            The restored model in evaluation mode.
+        """
 
         with open(
             os.path.join(directory, "jev_config.json"),
@@ -156,6 +213,18 @@ def build_jev(
     device: str,
     revision: str = "main",
 ):
+    """Build an Apertus model with LoRA adapters and a float32 pointer head.
+
+    Args:
+        base_model: Hugging Face model ID or local checkpoint directory.
+        lora_rank: Rank of the LoRA adapters.
+        device: Device for the backbone and pointer head.
+        revision: Checkpoint revision to load for a remote model.
+
+    Returns:
+        A JevModel with adapters attached. The backbone uses bfloat16 on CUDA
+        and float32 otherwise; trainable backbone parameters use float32.
+    """
     dtype = torch.bfloat16 if torch.device(device).type == "cuda" else torch.float32
 
     llm = load_apertus(

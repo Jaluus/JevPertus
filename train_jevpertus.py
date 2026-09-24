@@ -1,4 +1,4 @@
-"""Minimal JevType training: frozen Apertus + LoRA + an option pointer head."""
+"""Train LoRA adapters and an option pointer head on an Apertus backbone."""
 
 import json
 import os
@@ -31,7 +31,16 @@ def question_losses(
     logits: list[torch.Tensor],
     examples: list[EncodedQuestion],
 ) -> torch.Tensor:
-    """One cross-entropy per question, allowing different option counts."""
+    """Compute cross-entropy losses for questions with varying option counts.
+
+    Args:
+        logits: Nonempty list of logit tensors, one per question.
+        examples: Corresponding encoded questions with zero-based labels, in the
+            same order and with the same length as logits.
+
+    Returns:
+        Float32 loss tensor of shape (num_questions,) on the logits device.
+    """
     return torch.stack(
         [
             F.cross_entropy(
@@ -48,6 +57,17 @@ def question_losses(
 
 @torch.no_grad()
 def evaluate(model, loader, device):
+    """Compute mean question loss and accuracy without tracking gradients.
+
+    Args:
+        model: Jev model to evaluate; left in evaluation mode after the call.
+        loader: Loader for a nonempty labeled dataset, visited once in full.
+        device: Device for batch tensors; CUDA enables bfloat16 autocast.
+
+    Returns:
+        A tuple containing mean cross-entropy loss and the fraction of correct
+        predictions.
+    """
     model.eval()
     total_loss, correct = 0.0, 0
 
@@ -73,7 +93,7 @@ def evaluate(model, loader, device):
 
 
 def main():
-
+    """Train and evaluate using module settings, saving metrics and checkpoints."""
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     torch.manual_seed(SEED)
 

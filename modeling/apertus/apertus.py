@@ -1,3 +1,5 @@
+"""Implement the Apertus text backbone and its transformer components."""
+
 import einops
 import torch
 import torch.nn as nn
@@ -5,12 +7,21 @@ import torch.nn.functional as F
 
 
 class RoPE(nn.Module):
+    """Apply rotary position embeddings with Apertus frequency scaling."""
+
     def __init__(
         self,
         head_dim,
         theta=12_000_000,
         factor=8.0,
     ):
+        """Initialize rotary embedding settings and nonpersistent caches.
+
+        Args:
+            head_dim: Even number of dimensions in each attention head.
+            theta: Base used to compute rotary inverse frequencies.
+            factor: Scaling factor applied to low rotary frequencies.
+        """
         super().__init__()
 
         self.rotary_dim = head_dim
@@ -20,6 +31,14 @@ class RoPE(nn.Module):
         self.register_buffer("sin_cached", None, persistent=False)
 
     def _scaled_inverse_frequencies(self, device):
+        """Compute the scaled inverse frequencies for rotary dimension pairs.
+
+        Args:
+            device: Device on which to create the frequency tensor.
+
+        Returns:
+            Float32 inverse frequencies of shape (head_dim // 2,).
+        """
         dimensions = torch.arange(
             0, self.rotary_dim, 2, device=device, dtype=torch.float32
         )
@@ -33,7 +52,13 @@ class RoPE(nn.Module):
 
     @torch.no_grad()
     def precompute(self, length, device, dtype):
-        """Prepare reusable tables without adding them to model checkpoints."""
+        """Cache rotary sine and cosine tables outside the model state dict.
+
+        Args:
+            length: Number of token positions to cache.
+            device: Device on which to create the tables.
+            dtype: Dtype of the cached tables.
+        """
         # Each token position gets one angle per pair of rotary dimensions.
         positions = torch.arange(length, device=device, dtype=torch.float32)
         inv_freq = self._scaled_inverse_frequencies(device)
@@ -45,7 +70,14 @@ class RoPE(nn.Module):
         self.sin_cached = angles.sin().to(dtype)
 
     def forward(self, x):
-        """Rotate inputs shaped (batch, heads, tokens, head_dim)."""
+        """Rotate attention states using their token positions.
+
+        Args:
+            x: Tensor of shape (batch, heads, tokens, head_dim).
+
+        Returns:
+            Rotated states with the same shape, device, and dtype as x.
+        """
         length = x.shape[2]
         if (
             self.cos_cached is None
@@ -62,6 +94,8 @@ class RoPE(nn.Module):
 
 
 class GroupQueryAttention(nn.Module):
+    """Apply causal grouped-query attention with query and key normalization."""
+
     def __init__(
         self,
         embed_dim,
@@ -71,6 +105,20 @@ class GroupQueryAttention(nn.Module):
         rope_theta=12_000_000,
         rope_factor=8.0,
     ):
+        """Initialize attention projections, normalization, and rotary embeddings.
+
+        Args:
+            embed_dim: Width of input and output token states.
+            num_heads: Number of query attention heads.
+            num_kv_groups: Number of shared key and value heads.
+            head_dim: Even number of dimensions per attention head.
+            rope_theta: Base used for rotary inverse frequencies.
+            rope_factor: Low-frequency rotary scaling factor.
+
+        Raises:
+            ValueError: Head counts are nonpositive or num_heads is not divisible by
+                num_kv_groups.
+        """
         super().__init__()
         if num_heads <= 0 or num_kv_groups <= 0 or num_heads % num_kv_groups:
             raise ValueError("num_heads must be a positive multiple of num_kv_groups")
@@ -93,6 +141,14 @@ class GroupQueryAttention(nn.Module):
         # We start with (batch, tokens, embed_dim) and project to queries, keys, values.
         # We then reshape to (batch, heads, tokens, head_dim) for queries and (batch, kv_groups, tokens, head_dim) for keys and values.
         # This allows us to compute attention with grouped keys and values, where each group attends to multiple heads.
+        """Compute causal attention over token states.
+
+        Args:
+            x: Token states of shape (batch, tokens, embed_dim).
+
+        Returns:
+            Updated token states with the same shape as x.
+        """
         q = einops.rearrange(self.w_q(x), "b t (h d) -> b h t d", h=self.num_heads)
         k = einops.rearrange(self.w_k(x), "b t (g d) -> b g t d", g=self.num_kv_groups)
         v = einops.rearrange(self.w_v(x), "b t (g d) -> b g t d", g=self.num_kv_groups)
@@ -123,13 +179,24 @@ class GroupQueryAttention(nn.Module):
 
 
 class XIELU(nn.Module):
+    """Apply a learnable, elementwise xIELU activation."""
+
     def __init__(self):
+        """Initialize the two learned activation parameters."""
         super().__init__()
         # Each layer learns two scalars, constrained through softplus.
         self.alpha_p = nn.Parameter(torch.tensor([0.8]).expm1().log())
         self.alpha_n = nn.Parameter(torch.tensor([0.3]).expm1().log())
 
     def forward(self, x):
+        """Apply the positive and negative branches of xIELU.
+
+        Args:
+            x: Input tensor of any shape.
+
+        Returns:
+            Activated tensor with the same shape as x.
+        """
         alpha_p = F.softplus(self.alpha_p)
         alpha_n = 0.5 + F.softplus(self.alpha_n)
         positive = alpha_p * x.square() + 0.5 * x
@@ -138,23 +205,48 @@ class XIELU(nn.Module):
 
 
 class FeedForwardNetwork(nn.Module):
+    """Transform token states through an xIELU feed-forward network."""
+
     def __init__(self, embed_dim, hidden_dim):
+        """Initialize the expansion and contraction projections.
+
+        Args:
+            embed_dim: Width of input and output token states.
+            hidden_dim: Width of the intermediate activation.
+        """
         super().__init__()
         self.up = nn.Linear(embed_dim, hidden_dim, bias=False)
         self.activation = XIELU()
         self.down = nn.Linear(hidden_dim, embed_dim, bias=False)
 
     def forward(self, x):
+        """Apply the feed-forward transformation to token states.
+
+        Args:
+            x: Token states of shape (batch, tokens, embed_dim).
+
+        Returns:
+            Updated token states with the same shape as x.
+        """
         return self.down(self.activation(self.up(x)))
 
 
 class TransformerBlock(nn.Module):
+    """Apply pre-normalized attention and feed-forward residual updates."""
+
     def __init__(
         self,
         embed_dim,
         hidden_dim,
         attention: GroupQueryAttention,
     ):
+        """Initialize the residual block and its normalization layers.
+
+        Args:
+            embed_dim: Width of input and output token states.
+            hidden_dim: Intermediate width of the feed-forward network.
+            attention: Attention module compatible with embed_dim.
+        """
         super().__init__()
         self.rms_norm1 = nn.RMSNorm(embed_dim, eps=1e-5)
         self.attention = attention
@@ -162,12 +254,28 @@ class TransformerBlock(nn.Module):
         self.ff = FeedForwardNetwork(embed_dim, hidden_dim)
 
     def forward(self, x):
+        """Apply attention and feed-forward residual updates.
+
+        Args:
+            x: Token states of shape (batch, tokens, embed_dim).
+
+        Returns:
+            Updated token states with the same shape as x.
+        """
         x = x + self.attention(self.rms_norm1(x))
         x = x + self.ff(self.rms_norm2(x))
         return x
 
 
 class ApertusModel(nn.Module):
+    """Provide causal text logits and normalized token hidden states.
+
+    Attributes:
+        context_len: Configured context length, stored as metadata without a
+            length check.
+        vocab_size: Input vocabulary size and final padded logit width.
+    """
+
     def __init__(
         self,
         vocab_size=131072,
@@ -182,6 +290,26 @@ class ApertusModel(nn.Module):
         rope_factor=8.0,
         output_vocab_size=None,
     ):
+        """Initialize the text backbone and vocabulary projection.
+
+        Args:
+            vocab_size: Number of input token embeddings and final padded output
+                logits.
+            embed_dim: Width of token embeddings and hidden states.
+            hidden_dim: Intermediate feed-forward width.
+            context_len: Configured context length, stored as metadata.
+            num_heads: Number of query attention heads per block.
+            num_kv_groups: Number of shared key and value heads per block.
+            head_dim: Even number of dimensions per attention head.
+            num_attn_blocks: Number of transformer blocks.
+            rope_theta: Base used for rotary inverse frequencies.
+            rope_factor: Low-frequency rotary scaling factor.
+            output_vocab_size: Optional output projection width, at most vocab_size.
+                A falsy value uses vocab_size.
+
+        Raises:
+            ValueError: An attention block receives invalid head counts.
+        """
         super().__init__()
         self.context_len = context_len
         self.vocab_size = vocab_size
@@ -218,7 +346,18 @@ class ApertusModel(nn.Module):
         x: torch.Tensor,
         mask: torch.Tensor = None,
     ) -> torch.Tensor:
-        """Token IDs (batch, tokens) -> logits (batch, tokens, vocab_size)."""
+        """Compute vocabulary logits for each input token.
+
+        Args:
+            x: Token IDs of shape (batch, tokens) on the model device.
+            mask: Optional validity mask of shape (batch, tokens). Only right
+                padding is supported; the mask does not affect attention.
+
+        Returns:
+            Logits of shape (batch, tokens, vocab_size). Input-only vocabulary
+            entries receive the minimum finite value of the logit dtype. Callers
+            must ignore padded token outputs.
+        """
         logits = self.output_layer(self.partial_forward(x, mask))
         # V1.5's input-only image/audio IDs have no output-head rows.
         return F.pad(
@@ -232,11 +371,19 @@ class ApertusModel(nn.Module):
         x: torch.Tensor,
         mask: torch.Tensor = None,
     ) -> torch.Tensor:
-        """Token IDs (batch, tokens) -> final normalized hidden states.
+        """Compute final normalized hidden states for every input token.
 
-        Optional mask: (batch, tokens), 1 for real tokens and 0 for right padding.
-        Only right padding is supported; callers must ignore padded outputs.
-        Each call recomputes the entire sequence; there is no KV cache.
+        Only right-padded inputs are supported: causal attention keeps padding
+        from affecting earlier real tokens. Callers must ignore padded outputs.
+        Each call recomputes the entire sequence without a key/value cache.
+
+        Args:
+            x: Token IDs of shape (batch, tokens) on the model device.
+            mask: Optional validity mask of shape (batch, tokens), true for real
+                tokens. It is converted to boolean but is not applied to attention.
+
+        Returns:
+            Hidden states of shape (batch, tokens, embed_dim).
         """
 
         if mask is not None:

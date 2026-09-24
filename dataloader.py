@@ -1,4 +1,4 @@
-"""Read the repository's labelled JSONL data as one causal row per question."""
+"""Load, encode, and batch questions for training and inference."""
 
 import json
 import os
@@ -19,12 +19,17 @@ SPECIAL_TOKENS = {
 
 
 class Question(TypedDict):
-    """Raw training/inference question, before tokenization.
+    """Describe a question before tokenization.
 
-    Choice criteria map answer keys to descriptions; score criteria list options
-    in order. Noul criteria optionally describe the "false" and "true" answers.
-    Labels are zero-based option indices; noul uses 0 for false and 1 for true.
-    Omit the label for inference.
+    Attributes:
+        type: Question kind: "choice", "score", or "noul".
+        state: Context in which the question is asked.
+        instructions: Question text.
+        criteria: Optional answer-key descriptions for choice questions, ordered
+            option text for score questions, or descriptions keyed by "false"
+            and "true" for noul questions.
+        label: Optional zero-based option index. Noul uses 0 for false and 1 for
+            true. Omit for inference.
     """
 
     type: Literal["choice", "score", "noul"]
@@ -35,7 +40,15 @@ class Question(TypedDict):
 
 
 class EncodedQuestion(TypedDict):
-    """One encoded question; option metadata indexes the unpadded token row."""
+    """Store one tokenized question with unpadded token positions.
+
+    Attributes:
+        ids: Long tensor of shape (tokens,) on the encoding device.
+        option_idxs: Token position of each option-end delimiter, in option
+            order.
+        decide_idx: Token position of the final decision delimiter.
+        label: Optional zero-based option index; omitted for inference.
+    """
 
     ids: torch.Tensor  # [tokens]; inference uses a 1D long tensor.
     option_idxs: list[int]  # Token index of each option's end delimiter.
@@ -44,7 +57,15 @@ class EncodedQuestion(TypedDict):
 
 
 class QuestionBatch(TypedDict):
-    """Right-padded questions; examples retain their original Python metadata."""
+    """Store right-padded questions and their original examples.
+
+    Attributes:
+        ids: Long tensor of shape (batch_size, max_tokens).
+        mask: Boolean tensor of shape (batch_size, max_tokens), true for real
+            tokens.
+        examples: Original encoded questions in batch order, including their
+            token tensors.
+    """
 
     ids: torch.Tensor  # Long [batch_size, max_tokens], padded with pad_id.
     mask: torch.Tensor  # Bool [batch_size, max_tokens]; True for real tokens.
@@ -55,7 +76,16 @@ def collate_questions(
     examples: list[EncodedQuestion],
     pad_id: int = 0,
 ) -> QuestionBatch:
-    """Pad token rows on CPU, retaining each question's option metadata."""
+    """Right-pad CPU token rows and retain the original examples.
+
+    Args:
+        examples: Nonempty list of encoded questions with CPU token tensors.
+        pad_id: Token ID used for right padding.
+
+    Returns:
+        A batch containing padded token IDs, a validity mask, and the original
+        examples.
+    """
     rows = [torch.as_tensor(example["ids"], dtype=torch.long) for example in examples]
     ids = pad_sequence(rows, batch_first=True, padding_value=pad_id)
     lengths = torch.tensor([len(row) for row in rows])
@@ -67,7 +97,16 @@ def batch_to_device(
     batch: QuestionBatch,
     device: str | torch.device,
 ) -> QuestionBatch:
-    """Move batch tensors while leaving Python metadata on the CPU."""
+    """Move the padded batch tensors to a device.
+
+    Args:
+        batch: Batch to transfer.
+        device: Destination device for ids and mask.
+
+    Returns:
+        A new batch mapping with transferred ids and mask. The examples list and
+        its tensors are left unchanged.
+    """
     return {**batch, "ids": batch["ids"].to(device), "mask": batch["mask"].to(device)}
 
 
@@ -78,7 +117,19 @@ def parse_options(
     list[str] | list[bool] | list[int],
     int | None,
 ]:
-    """Return option text, answer keys, and an optional training label."""
+    """Resolve option text, answer keys, and the optional label.
+
+    Args:
+        question: Raw choice, score, or noul question.
+
+    Returns:
+        A tuple of option text, corresponding answer keys, and the label or
+        None. Keys are strings for choice, integer indices for score, and
+        [False, True] for noul.
+
+    Raises:
+        ValueError: The question type is unsupported.
+    """
     kind = question["type"]
     criteria = question.get("criteria") or {}
 
@@ -110,7 +161,21 @@ def encode_question(
     tokenizer,
     device: str | torch.device = "cpu",
 ) -> EncodedQuestion:
-    """Shared training/inference encoding; inference questions need no label."""
+    """Encode a question using the shared training and inference layout.
+
+    Args:
+        question: Raw question with an optional zero-based label.
+        tokenizer: Tokenizer supporting encode and convert_tokens_to_ids for
+            SPECIAL_TOKENS.
+        device: Device on which to create the token tensor.
+
+    Returns:
+        Token IDs, option-end positions, and the decision position, plus a label
+        when supplied.
+
+    Raises:
+        ValueError: The question type is unsupported.
+    """
 
     special = {
         name: tokenizer.convert_tokens_to_ids(token)
@@ -147,7 +212,19 @@ def encode_question(
 
 
 def load_questions(path: str) -> list[Question]:
-    """Read raw JSONL questions, converting legacy labels to option indices."""
+    """Read labeled JSONL records and flatten their questions.
+
+    Args:
+        path: Path to a JSONL file containing state and questions records.
+
+    Returns:
+        Questions with string state and instructions. Choice-key labels become
+        option indices, and boolean noul labels become integers.
+
+    Raises:
+        ValueError: A question has no label, a choice label is absent from its
+            criteria, or a record contains invalid JSON.
+    """
     questions = []
 
     with open(path) as file:
@@ -199,7 +276,17 @@ def build_trainloader(
     batch_size=8,
     seed=42,
 ):
+    """Build a shuffled loader from train.jsonl.
 
+    Args:
+        data_dir: Directory containing the labeled training file.
+        tokenizer: Tokenizer used to encode each question on the CPU.
+        batch_size: Maximum number of questions per batch.
+        seed: Seed for the loader generator used for shuffling.
+
+    Returns:
+        A DataLoader yielding right-padded question batches.
+    """
     train_questions = load_questions(os.path.join(data_dir, "train.jsonl"))
     encoded_questions = [
         encode_question(question, tokenizer) for question in train_questions
@@ -223,6 +310,16 @@ def build_testloader(
     tokenizer,
     batch_size=8,
 ):
+    """Build an ordered loader from test.jsonl.
+
+    Args:
+        data_dir: Directory containing the labeled evaluation file.
+        tokenizer: Tokenizer used to encode each question on the CPU.
+        batch_size: Maximum number of questions per batch.
+
+    Returns:
+        A DataLoader yielding right-padded question batches in file order.
+    """
     test_questions = load_questions(os.path.join(data_dir, "test.jsonl"))
     encoded_questions = [
         encode_question(question, tokenizer) for question in test_questions

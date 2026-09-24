@@ -1,4 +1,4 @@
-"""Load a trained Jev model and answer one unlabelled question."""
+"""Load a trained Jev model and print predictions for example questions."""
 
 import json
 import os
@@ -46,7 +46,16 @@ QUESTIONS: list[Question] = [
 
 
 def print_probabilities(question: Question, probabilities: torch.Tensor):
-    """Print the probabilities of each option for a given question."""
+    """Print question context and formatted option probabilities.
+
+    For noul questions, display the probability of true from element 1,
+    matching the encoder's [False, True] option order.
+
+    Args:
+        question: Raw question specifying the option labels to display.
+        probabilities: One-dimensional probability tensor in encoded option
+            order.
+    """
 
     print(f"Context: {question['state']}")
     print(f"Question: {question['instructions']}")
@@ -62,10 +71,11 @@ def print_probabilities(question: Question, probabilities: torch.Tensor):
             print(f"Score '{criterion}': {prob:.2f}")
 
     elif question["type"] == "noul":
-        print(f"Probability of statement being true: {probabilities[0]:.2f}")
+        print(f"Probability of statement being true: {probabilities[1]:.2f}")
 
 
 def main():
+    """Load the configured checkpoint and print predictions for QUESTIONS."""
     with open(os.path.join(CHECKPOINT, "jev_config.json"), encoding="utf-8") as file:
         config = json.load(file)
     tokenizer = AutoTokenizer.from_pretrained(
