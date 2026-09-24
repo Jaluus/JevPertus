@@ -11,18 +11,8 @@ from peft import (
     set_peft_model_state_dict,
 )
 from torch import nn
-
-
-class PointerHead(nn.Module):
-    def __init__(self, hidden_dim, pointer_dim=256):
-        super().__init__()
-        self.config = dict(hidden_dim=hidden_dim, pointer_dim=pointer_dim)
-        self.query = nn.Linear(hidden_dim, pointer_dim)
-        self.key = nn.Linear(hidden_dim, pointer_dim)
-        self.scale = pointer_dim**-0.5
-
-    def forward(self, decide, options):
-        return (self.key(options) @ self.query(decide)) * self.scale
+from .pointerhead import PointerHead
+from .apertus import load_apertus
 
 
 class JevModel(nn.Module):
@@ -36,10 +26,14 @@ class JevModel(nn.Module):
     initializes the backbone and head with matching device and dtype.
     """
 
-    def __init__(self, backbone, head):
+    def __init__(
+        self,
+        llm_backbone,
+        pointerhead: PointerHead,
+    ):
         super().__init__()
-        self.backbone = backbone
-        self.head = head
+        self.backbone = llm_backbone
+        self.head = pointerhead
 
     def add_lora(self, config):
 
@@ -138,3 +132,33 @@ class JevModel(nn.Module):
         set_peft_model_state_dict(model.backbone, weights["adapter"])
         model.head.load_state_dict(weights["head"])
         return model.eval()
+
+
+def build_jev(
+    base_model: str,
+    lora_rank: int,
+    device: str,
+    revision: str = "main",
+):
+    dtype = torch.bfloat16 if torch.device(device).type == "cuda" else torch.float32
+
+    llm_backbone = load_apertus(
+        base_model,
+        device=device,
+        dtype=dtype,
+        revision=revision,
+    )
+
+    lora_config = LoraConfig(
+        r=lora_rank,
+        lora_alpha=2 * lora_rank,
+        lora_dropout=0.05,
+        bias="none",
+        target_modules=["w_q", "w_k", "w_v", "w_o", "up", "down"],
+    )
+
+    pointerhead = PointerHead(llm_backbone.input_layer.embedding_dim).to(
+        device=device, dtype=torch.float32
+    )
+
+    return JevModel(llm_backbone, pointerhead).add_lora(lora_config)

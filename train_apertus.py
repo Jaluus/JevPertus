@@ -2,22 +2,17 @@
 
 import json
 import os
-from functools import partial
 
 import torch
 import torch.nn.functional as F
-from peft import LoraConfig
-from torch.utils.data import DataLoader
 from transformers import AutoTokenizer
 
-from apertus_data import batch_to_device, collate_questions, load_examples
-from modeling.apertus import load_apertus
-from modeling.jev import JevModel, PointerHead
+from dataloader import batch_to_device, build_trainloader, build_testloader
+from modeling.jev import build_jev
 
 # Edit these constants before running: python train_apertus.py
 DATA_DIR = "data"
 BASE_MODEL = "swiss-ai/Apertus-v1.5-8B"
-BASE_REVISION = "main"
 DEVICE = "cuda:0"
 EPOCHS = 1
 BATCH_SIZE = 4
@@ -25,36 +20,6 @@ LORA_RANK = 16
 LEARNING_RATE = 5e-5
 SEED = 0
 OUTPUT_DIR = "runs/jevpertus_V3"
-
-
-def build_model(
-    base,
-    revision,
-    device,
-    rank,
-):
-    dtype = torch.bfloat16 if torch.device(device).type == "cuda" else torch.float32
-
-    backbone = load_apertus(
-        base,
-        revision=revision,
-        device=device,
-        dtype=dtype,
-    )
-
-    config = LoraConfig(
-        r=rank,
-        lora_alpha=2 * rank,
-        lora_dropout=0.05,
-        bias="none",
-        target_modules=["w_q", "w_k", "w_v", "w_o", "up", "down"],
-    )
-
-    head = PointerHead(backbone.input_layer.embedding_dim).to(
-        device=device, dtype=torch.float32
-    )
-
-    return JevModel(backbone, head).add_lora(config)
 
 
 def question_losses(logits, examples):
@@ -99,28 +64,22 @@ def main():
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     torch.manual_seed(SEED)
 
-    tokenizer = AutoTokenizer.from_pretrained(BASE_MODEL, revision=BASE_REVISION)
+    tokenizer = AutoTokenizer.from_pretrained(BASE_MODEL)
+    train_loader = build_trainloader(
+        DATA_DIR,
+        tokenizer,
+        batch_size=BATCH_SIZE,
+    )
+    test_loader = build_testloader(
+        DATA_DIR,
+        tokenizer,
+        batch_size=BATCH_SIZE,
+    )
 
     print(f"Loading training data from {DATA_DIR}...")
-    train = load_examples(os.path.join(DATA_DIR, "train.jsonl"), tokenizer)
-    development = load_examples(os.path.join(DATA_DIR, "development.jsonl"), tokenizer)
-    pad_id = tokenizer.pad_token_id if tokenizer.pad_token_id is not None else 0
-
-    train_loader = DataLoader(
-        train,
-        batch_size=BATCH_SIZE,
-        shuffle=True,
-        collate_fn=partial(collate_questions, pad_id=pad_id),
-        generator=torch.Generator().manual_seed(SEED),
-    )
-    dev_loader = DataLoader(
-        development,
-        batch_size=BATCH_SIZE,
-        collate_fn=partial(collate_questions, pad_id=pad_id),
-    )
 
     print("Building model...")
-    model = build_model(BASE_MODEL, BASE_REVISION, DEVICE, LORA_RANK)
+    model = build_jev(BASE_MODEL, DEVICE, LORA_RANK)
 
     parameters = [p for p in model.parameters() if p.requires_grad]
     print(f"Trainable parameters: {sum(p.numel() for p in parameters):,}")
@@ -176,12 +135,12 @@ def main():
                 )
 
                 print(
-                    f"epoch {epoch + 1} questions {seen}/{len(train)} loss {total_loss / seen:.4f}",
+                    f"epoch {epoch + 1} questions {seen}/{len(train_loader)} loss {total_loss / seen:.4f}",
                     end="\r",
                     flush=True,
                 )
 
-            dev_loss, accuracy = evaluate(model, dev_loader, DEVICE)
+            dev_loss, accuracy = evaluate(model, test_loader, DEVICE)
             history.write(
                 json.dumps(
                     {
@@ -203,7 +162,7 @@ def main():
                 os.path.join(OUTPUT_DIR, f"epoch_{epoch + 1}"),
                 backbone_config={
                     "model_id": BASE_MODEL,
-                    "revision": BASE_REVISION,
+                    "revision": "main",
                 },
                 training_config={
                     "data": DATA_DIR,

@@ -4,6 +4,9 @@ import json
 
 import torch
 from torch.nn.utils.rnn import pad_sequence
+import os
+from torch.utils.data import DataLoader
+from functools import partial
 
 SPECIAL_TOKENS = {
     "context": "<SPECIAL_100>",
@@ -63,7 +66,13 @@ class ContextOverflow(ValueError):
     """A question exceeds the chosen input budget; no content is truncated."""
 
 
-def encode_question(state, question, tokenizer, max_length=1024, max_state=384):
+def encode_question(
+    state,
+    question,
+    tokenizer,
+    max_length=1024,
+    max_state=384,
+):
     """Shared training/inference encoding; inference questions need no label."""
     special = {
         name: tokenizer.convert_tokens_to_ids(token)
@@ -133,3 +142,56 @@ def load_examples(path, tokenizer, max_length=1024, max_state=384):
     if not examples:
         raise ValueError(f"No usable questions in {path}")
     return examples
+
+
+def build_trainloader(
+    data_dir,
+    tokenizer,
+    batch_size=8,
+    max_length=1024,
+    max_state=384,
+    seed=42,
+):
+    trainset = load_examples(
+        os.path.join(data_dir, "train.jsonl"),
+        tokenizer,
+        max_length,
+        max_state,
+    )
+
+    pad_id = tokenizer.pad_token_id if tokenizer.pad_token_id is not None else 0
+
+    train_loader = DataLoader(
+        trainset,
+        batch_size=batch_size,
+        shuffle=True,
+        collate_fn=partial(collate_questions, pad_id=pad_id),
+        generator=torch.Generator().manual_seed(seed),
+    )
+
+    return train_loader
+
+
+def build_testloader(
+    data_dir,
+    tokenizer,
+    batch_size=8,
+    max_length=1024,
+    max_state=384,
+):
+    testset = load_examples(
+        os.path.join(data_dir, "test.jsonl"),
+        tokenizer,
+        max_length,
+        max_state,
+    )
+
+    pad_id = tokenizer.pad_token_id if tokenizer.pad_token_id is not None else 0
+
+    test_loader = DataLoader(
+        testset,
+        batch_size=batch_size,
+        collate_fn=partial(collate_questions, pad_id=pad_id),
+    )
+
+    return test_loader
