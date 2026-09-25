@@ -82,7 +82,34 @@ The full backbone must fit on the selected device alongside activations and trai
 The training script reads `data/train.jsonl` and evaluates on `data/test.jsonl`. Each line is a JSON object containing a shared `state` and a mapping of question IDs to labeled questions:
 
 ```json
-{"state":"You live in Zurich.","questions":{"q1":{"type":"choice","instructions":"Which country do you live in?","criteria":{"A":"Switzerland","B":"France"},"label":"A"},"q2":{"type":"noul","instructions":"You live in Switzerland.","label":true},"q3":{"type":"score","instructions":"How certain are you?","criteria":["Uncertain","Certain"],"label":1}}}
+{
+  "state": "You live in Zurich.",
+  "questions": {
+    "q1": {
+      "type": "choice",
+      "instructions": "Which country do you live in?",
+      "criteria": {
+        "A": "Switzerland",
+        "B": "France"
+      },
+      "label": "A"
+    },
+    "q2": {
+      "type": "noul",
+      "instructions": "You live in Switzerland.",
+      "label": true
+    },
+    "q3": {
+      "type": "score",
+      "instructions": "How certain are you?",
+      "criteria": [
+        "Uncertain",
+        "Certain"
+      ],
+      "label": 1
+    }
+  }
+}
 ```
 
 | Type     | `criteria`                                                | Label in JSONL                                         |
