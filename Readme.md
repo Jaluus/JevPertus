@@ -10,14 +10,32 @@ JevPertus combines an Apertus text backbone, LoRA adapters, and a small pointer 
 
 It supports multiple-choice questions, ordered rating scales, and true/false statements. Predictions come from scoring the supplied options in a single backbone pass.
 
-## How it works
+## How does Jev work?
 
-1. Encode the context (`state`), question (`instructions`), and options using Apertus special tokens `<SPECIAL_100>` through `<SPECIAL_104>`.
-2. Run the encoded sequence through the backbone to obtain token hidden states.
-3. Use a pointer head to compare the final decision state with each option's end state.
-4. Apply softmax to the option logits to obtain probabilities.
+The implementation is based on the Blogpost from [Archerhume](https://archerhume.com/posts/jevs-architecture-unmasked) and the [Kev repository](...) applied to the [Apertus LLM](https://huggingface.co/swiss-ai/Apertus-v1.5-8B).
 
-Training updates the LoRA adapters and pointer head while keeping the base weights frozen. Batches support questions with different sequence lengths and option counts.
+The simple idea is to encode a "State", a "Question", the "Options" and a final "Decision" into a single sequence.
+This looks somthing like this:
+
+```text
+<STATE_TOKEN> A Sandwich is defined as a food item consisting of two pieces of bread with a filling in between.
+<QUESTION_TOKEN> Is a hot dog a sandwich?
+<OPTION_START_TOKEN> Yes: a hot dog is a sandwich.<OPTION_END_TOKEN>
+<OPTION_START_TOKEN> No: a hot dog is not a sandwich.<OPTION_END_TOKEN>
+<OPTION_START_TOKEN> It depends on the culture.<OPTION_END_TOKEN>
+<DECISION_TOKEN>
+```
+
+We can then feed this sequence into an LLM and extract the final hidden states for each of the `<OPTION_END_TOKEN>` tokens and the `<DECISION_TOKEN>` token.
+This gives us a representation of each option and the decision point, which we can then use to score the options and make a final decision.
+
+This is done by passing the final hidden states through a small pointer head, which outputs a probability distribution over the options. For example, if we say $\vec{h}_1, \vec{h}_2, \vec{h}_3$ are the final hidden states for the three option tokens (`<OPTION_END_TOKEN>`), and $\vec{h}_d$ is the final hidden state for the decision token (`<DECISION_TOKEN>`), we can compute the scores for each option using the pointer head as follows:
+
+$$
+ADD IT HERE
+$$
+where $s_i$ is the score for option $i$.
+We can then apply a softmax to the scores to get a probability distribution over the options.
 
 ## Setup
 
@@ -66,7 +84,7 @@ To configure training, set the following environment variables:
 | `BATCH_SIZE`    | `1`                        |
 | `LORA_RANK`     | `16`                       |
 | `LEARNING_RATE` | `5e-5`                     |
-| `OUTPUT_DIR`    | `runs/jevpertus`           |
+| `OUTPUT_DIR`    | `runs/jevpertus-v1.5-8B`   |
 
 Training writes per-step loss and per-epoch evaluation metrics to `loss_history.jsonl`, and saves a checkpoint after each epoch:
 
@@ -90,6 +108,38 @@ Checkpoints contain the LoRA adapter weights, pointer-head weights, and configur
 To see how JevPertus performs on a few example questions, run `inference_jevpertus.py`. The script loads a checkpoint and prints predictions for three sample questions.
 
 The examples cover all three question types. Choice and score questions print a probability for each option; `noul` questions print the probability of true.
+
+## Benchmark results
+
+Accuracy (%) on the full test splits; Global-MMLU averages language accuracies,
+while other rows weight each question equally. The completed
+run uses JevPertus with the `swiss-ai/Apertus-v1.5-8B` backbone, checkpoint
+`runs/jevpertus-v1.5-8B/epoch_2` (two training epochs), and zero-shot pointer-head scoring.
+These are scores for the trained Jev model, not the unmodified Apertus backbone.
+
+| Benchmark                      | Questions | Jev + Apertus v1.5-8B | Jev + Apertus 8B-Instruct-2509 | Apertus v1.5-8B Instruct (original) | Apertus 8B-Instruct-2509 (paper) |
+| ------------------------------ | --------: | --------------------: | -----------------------------: | ----------------------------------: | -------------------------------: |
+| MMLU                           |    14,042 |                 50.51 |                          54.20 |                         Coming Soon |                             60.9 |
+| MMLU-Pro                       |    12,032 |                 27.90 |                          25.85 |                         Coming Soon |                                - |
+| ARC-Challenge                  |     1,172 |                 73.63 |                          74.32 |                         Coming Soon |                             77.6 |
+| Global-MMLU (language average) |    56,168 |                 47.14 |                              - |                         Coming Soon |                             55.7 |
+
+Paper scores are for **Apertus-8B-Instruct (v1)**, from
+[Table 17](https://arxiv.org/html/2509.14233v2#S5.T17) (MMLU and Global-MMLU)
+and [Table 21](https://arxiv.org/html/2509.14233v2#S5.T21) (ARC Challenge Chat).
+
+### Running the benchmarks
+
+```bash
+python evaluate_benchmarks.py \
+  --checkpoint runs/jevpertus-v1.5-8B/epoch_2 \
+  --benchmarks mmlu mmlu-pro arc-challenge global-mmlu \
+  --languages en de fr it \
+  --device cuda:0 --batch-size 1
+```
+
+Results default to the checkpoint's `evals/` subfolder, here
+`runs/jevpertus-v1.5-8B/epoch_2/evals/`
 
 ## Project layout
 
