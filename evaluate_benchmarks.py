@@ -25,8 +25,15 @@ def positive_int(value):
 
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--checkpoint", required=True)
-    parser.add_argument("--output-dir", required=True, help="New result directory")
+    parser.add_argument(
+        "--checkpoint",
+        required=True,
+        help="Checkpoint directory, e.g. runs/jevpertus-v1.5-8B/epoch_2",
+    )
+    parser.add_argument(
+        "--output-dir",
+        help="New result directory (default: <checkpoint>/evals)",
+    )
     parser.add_argument(
         "--benchmarks", nargs="+", choices=BENCHMARKS, default=list(BENCHMARKS)
     )
@@ -82,6 +89,13 @@ def parse_args():
     args.dataset_revision = revisions
     if "all" in args.languages and len(args.languages) != 1:
         parser.error("--languages all cannot be combined with language codes")
+    if args.output_dir is None:
+        args.output_dir = os.path.join(args.checkpoint, "evals")
+    if os.path.exists(args.output_dir):
+        parser.error(
+            f"Result directory already exists: {args.output_dir}. "
+            "Choose a new --output-dir to preserve previous results."
+        )
     return args
 
 

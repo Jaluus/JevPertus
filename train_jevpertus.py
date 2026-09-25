@@ -17,14 +17,14 @@ from modeling.jev import build_jev
 
 # Edit these constants before running: python train_apertus.py
 DATA_DIR = "data"
-BASE_MODEL = "swiss-ai/Apertus-v1.5-8B"
+BASE_MODEL = "swiss-ai/Apertus-8B-Instruct-2509"
 DEVICE = "cuda:0"
 EPOCHS = 2
 BATCH_SIZE = 1
 LORA_RANK = 16
 LEARNING_RATE = 5e-5
 SEED = 0
-OUTPUT_DIR = "runs/jevpertus"
+OUTPUT_DIR = "runs/jevpertus-8B-Instruct-2509"
 
 
 def question_losses(
