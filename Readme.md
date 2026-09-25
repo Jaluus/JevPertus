@@ -29,12 +29,35 @@ This looks somthing like this:
 We can then feed this sequence into an LLM and extract the final hidden states for each of the `<OPTION_END_TOKEN>` tokens and the `<DECISION_TOKEN>` token.
 This gives us a representation of each option and the decision point, which we can then use to score the options and make a final decision.
 
+![JevPertus architecture: Apertus with LoRA, option and decision hidden states, pointer head, and softmax probabilities](assets/jevpertus-architecture.svg)
+
 This is done by passing the final hidden states through a small pointer head, which outputs a probability distribution over the options. For example, if we say $\vec{h}_1, \vec{h}_2, \vec{h}_3$ are the final hidden states for the three option tokens (`<OPTION_END_TOKEN>`), and $\vec{h}_d$ is the final hidden state for the decision token (`<DECISION_TOKEN>`), we can compute the scores for each option using the pointer head as follows:
 
+First, project the decision state into a query vector shared by all options:
+
 $$
-ADD IT HERE
+\vec{q} = W_q\vec{h}_d + \vec{b}_q
 $$
-where $s_i$ is the score for option $i$.
+
+For option 1 ("Yes"), project its hidden state into a key vector and compute its score:
+
+$$
+\vec{k}_1 = W_k\vec{h}_1 + \vec{b}_k, \qquad s_1 = \frac{\vec{k}_1^\top\vec{q}}{\sqrt{d_p}}
+$$
+
+For option 2 ("No"), use the same key projection and query:
+
+$$
+\vec{k}_2 = W_k\vec{h}_2 + \vec{b}_k, \qquad s_2 = \frac{\vec{k}_2^\top\vec{q}}{\sqrt{d_p}}
+$$
+
+For option 3 ("It depends on the culture"), repeat the calculation:
+
+$$
+\vec{k}_3 = W_k\vec{h}_3 + \vec{b}_k, \qquad s_3 = \frac{\vec{k}_3^\top\vec{q}}{\sqrt{d_p}}
+$$
+
+Here, $W_k, \vec{b}_k$ and $W_q, \vec{b}_q$ are the learned key and query projection weights and biases, and $d_p$ is the pointer dimension. The code computes all three scores together in a single matrix-vector multiplication. This is basically a form of attention where the decision state attends to the option states.
 We can then apply a softmax to the scores to get a probability distribution over the options.
 
 ## Setup
