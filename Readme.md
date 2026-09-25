@@ -161,10 +161,11 @@ The examples cover all three question types. Choice and score questions print a 
 
 ## Benchmark results
 
-Accuracy (%) on the full test splits; Global-MMLU averages language accuracies,
-while other rows weight each question equally. The completed
-run uses JevPertus with the `swiss-ai/Apertus-v1.5-8B` backbone, checkpoint
-`runs/jevpertus-v1.5-8B/epoch_2` (two training epochs), and zero-shot pointer-head scoring.
+Accuracy (%) on the full test splits; Global-MMLU averages English, German, French,
+and Italian accuracies, while other rows weight each question equally. Both JevPertus
+runs use checkpoints after two training epochs and zero-shot pointer-head scoring:
+`runs/jevpertus-v1.5-8B/epoch_2` for `swiss-ai/Apertus-v1.5-8B` and
+`runs/jevpertus-8B-Instruct-2509/epoch_2` for `swiss-ai/Apertus-8B-Instruct-2509` (V1).
 These are scores for the trained Jev model, not the unmodified Apertus backbone.
 
 | Benchmark                      | Questions | Jev + Apertus v1.5-8B | Jev + Apertus 8B-Instruct-2509 | Apertus v1.5-8B Instruct (original) | Apertus 8B-Instruct-2509 (paper) |
@@ -172,7 +173,7 @@ These are scores for the trained Jev model, not the unmodified Apertus backbone.
 | MMLU                           |    14,042 |                 50.51 |                          54.20 |                         Coming Soon |                             60.9 |
 | MMLU-Pro                       |    12,032 |                 27.90 |                          25.85 |                         Coming Soon |                                - |
 | ARC-Challenge                  |     1,172 |                 73.63 |                          74.32 |                         Coming Soon |                             77.6 |
-| Global-MMLU (language average) |    56,168 |                 47.14 |                              - |                         Coming Soon |                             55.7 |
+| Global-MMLU (language average) |    56,168 |                 47.14 |                          51.01 |                         Coming Soon |                             55.7 |
 
 Paper scores are for **Apertus-8B-Instruct (v1)**, from
 [Table 17](https://arxiv.org/html/2509.14233v2#S5.T17) (MMLU and Global-MMLU)

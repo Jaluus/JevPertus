@@ -1,0 +1,122 @@
+{
+  "status": "complete",
+  "started_at": "2026-09-25T09:06:18.384310+00:00",
+  "protocol": "zero-shot Jev pointer-head scoring; source option order; no generation",
+  "arguments": {
+    "checkpoint": "runs/jevpertus-8B-Instruct-2509/epoch_2",
+    "output_dir": "runs/jevpertus-8B-Instruct-2509/epoch_2/evals",
+    "benchmarks": [
+      "mmlu",
+      "mmlu-pro",
+      "arc-challenge",
+      "global-mmlu"
+    ],
+    "languages": [
+      "en",
+      "de",
+      "fr",
+      "it"
+    ],
+    "split": "test",
+    "batch_size": 1,
+    "device": "cuda:0",
+    "limit": null,
+    "seed": 0,
+    "max_tokens": 8192,
+    "state": "Choose the correct answer.",
+    "dataset_revision": {}
+  },
+  "device": "cuda:0",
+  "dtype": "torch.bfloat16",
+  "checkpoint_config": {
+    "backbone": {
+      "model_id": "swiss-ai/Apertus-8B-Instruct-2509",
+      "revision": "main"
+    },
+    "head": {
+      "hidden_dim": 4096,
+      "pointer_dim": 256
+    },
+    "training": {
+      "data": "data",
+      "epochs": 2,
+      "batch_size": 1,
+      "lr": 5e-05,
+      "seed": 0,
+      "precision": "torch.bfloat16"
+    }
+  },
+  "datasets": [
+    {
+      "name": "mmlu",
+      "repo": "cais/mmlu",
+      "config": "all",
+      "revision": "c30699e8356da336a370243923dbaf21066bb9fe",
+      "split": "test",
+      "available_count": 14042,
+      "selected_count": 14042,
+      "fingerprint": "436299c1c09696bb"
+    },
+    {
+      "name": "mmlu-pro",
+      "repo": "TIGER-Lab/MMLU-Pro",
+      "config": "default",
+      "revision": "b189ec765aa7ed75c8acfea42df31fdae71f97be",
+      "split": "test",
+      "available_count": 12032,
+      "selected_count": 12032,
+      "fingerprint": "0072dd0a32d256fc"
+    },
+    {
+      "name": "arc-challenge",
+      "repo": "allenai/ai2_arc",
+      "config": "ARC-Challenge",
+      "revision": "210d026faf9955653af8916fad021475a3f00453",
+      "split": "test",
+      "available_count": 1172,
+      "selected_count": 1172,
+      "fingerprint": "a4361c3f3e560fcd"
+    },
+    {
+      "name": "global-mmlu-en",
+      "repo": "CohereLabs/Global-MMLU",
+      "config": "en",
+      "revision": "0e619dbeb34206cd48705a1a0ea7fb21cae09993",
+      "split": "test",
+      "available_count": 14042,
+      "selected_count": 14042,
+      "fingerprint": "6f8a5ac7406d0c7a"
+    },
+    {
+      "name": "global-mmlu-de",
+      "repo": "CohereLabs/Global-MMLU",
+      "config": "de",
+      "revision": "0e619dbeb34206cd48705a1a0ea7fb21cae09993",
+      "split": "test",
+      "available_count": 14042,
+      "selected_count": 14042,
+      "fingerprint": "5219ce6400427e07"
+    },
+    {
+      "name": "global-mmlu-fr",
+      "repo": "CohereLabs/Global-MMLU",
+      "config": "fr",
+      "revision": "0e619dbeb34206cd48705a1a0ea7fb21cae09993",
+      "split": "test",
+      "available_count": 14042,
+      "selected_count": 14042,
+      "fingerprint": "6b4d35ab481d8f97"
+    },
+    {
+      "name": "global-mmlu-it",
+      "repo": "CohereLabs/Global-MMLU",
+      "config": "it",
+      "revision": "0e619dbeb34206cd48705a1a0ea7fb21cae09993",
+      "split": "test",
+      "available_count": 14042,
+      "selected_count": 14042,
+      "fingerprint": "a74a37605b1812ea"
+    }
+  ],
+  "finished_at": "2026-09-25T10:04:42.963482+00:00"
+}

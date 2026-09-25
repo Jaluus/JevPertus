@@ -1,0 +1,1558 @@
+{
+  "mmlu": {
+    "count": 14042,
+    "accuracy": 0.542016806722689,
+    "cross_entropy": 1.102402201483618,
+    "subject_macro_accuracy": 0.5504691946945567,
+    "by_subject": {
+      "abstract_algebra": {
+        "count": 100,
+        "accuracy": 0.34,
+        "cross_entropy": 1.5573279179632664
+      },
+      "anatomy": {
+        "count": 135,
+        "accuracy": 0.5407407407407407,
+        "cross_entropy": 1.1181789212213415
+      },
+      "astronomy": {
+        "count": 152,
+        "accuracy": 0.5921052631578947,
+        "cross_entropy": 0.9639744037321132
+      },
+      "business_ethics": {
+        "count": 100,
+        "accuracy": 0.58,
+        "cross_entropy": 0.9540902089886367
+      },
+      "clinical_knowledge": {
+        "count": 265,
+        "accuracy": 0.6037735849056604,
+        "cross_entropy": 0.9590089283479413
+      },
+      "college_biology": {
+        "count": 144,
+        "accuracy": 0.5555555555555556,
+        "cross_entropy": 1.0050296177376166
+      },
+      "college_chemistry": {
+        "count": 100,
+        "accuracy": 0.37,
+        "cross_entropy": 1.3799539654888213
+      },
+      "college_computer_science": {
+        "count": 100,
+        "accuracy": 0.5,
+        "cross_entropy": 1.241915839239955
+      },
+      "college_mathematics": {
+        "count": 100,
+        "accuracy": 0.34,
+        "cross_entropy": 1.4468615517020225
+      },
+      "college_medicine": {
+        "count": 173,
+        "accuracy": 0.5549132947976878,
+        "cross_entropy": 1.1665187150999
+      },
+      "college_physics": {
+        "count": 102,
+        "accuracy": 0.3627450980392157,
+        "cross_entropy": 1.4302472775327224
+      },
+      "computer_security": {
+        "count": 100,
+        "accuracy": 0.63,
+        "cross_entropy": 1.0107634974550457
+      },
+      "conceptual_physics": {
+        "count": 235,
+        "accuracy": 0.5404255319148936,
+        "cross_entropy": 1.1387685925422355
+      },
+      "econometrics": {
+        "count": 114,
+        "accuracy": 0.40350877192982454,
+        "cross_entropy": 1.3448895230366473
+      },
+      "electrical_engineering": {
+        "count": 145,
+        "accuracy": 0.46206896551724136,
+        "cross_entropy": 1.2029308392698395
+      },
+      "elementary_mathematics": {
+        "count": 378,
+        "accuracy": 0.36243386243386244,
+        "cross_entropy": 1.4313725690744206
+      },
+      "formal_logic": {
+        "count": 126,
+        "accuracy": 0.4523809523809524,
+        "cross_entropy": 1.368050843063328
+      },
+      "global_facts": {
+        "count": 100,
+        "accuracy": 0.35,
+        "cross_entropy": 1.3631644319742917
+      },
+      "high_school_biology": {
+        "count": 310,
+        "accuracy": 0.6290322580645161,
+        "cross_entropy": 0.9471559296012856
+      },
+      "high_school_chemistry": {
+        "count": 203,
+        "accuracy": 0.43349753694581283,
+        "cross_entropy": 1.362590487477521
+      },
+      "high_school_computer_science": {
+        "count": 100,
+        "accuracy": 0.53,
+        "cross_entropy": 1.1193302588770166
+      },
+      "high_school_european_history": {
+        "count": 165,
+        "accuracy": 0.6909090909090909,
+        "cross_entropy": 0.8264343519017777
+      },
+      "high_school_geography": {
+        "count": 198,
+        "accuracy": 0.6363636363636364,
+        "cross_entropy": 0.9648543573293313
+      },
+      "high_school_government_and_politics": {
+        "count": 193,
+        "accuracy": 0.7357512953367875,
+        "cross_entropy": 0.7162037571245261
+      },
+      "high_school_macroeconomics": {
+        "count": 390,
+        "accuracy": 0.5769230769230769,
+        "cross_entropy": 1.0369781735341232
+      },
+      "high_school_mathematics": {
+        "count": 270,
+        "accuracy": 0.2851851851851852,
+        "cross_entropy": 1.4227549886261974
+      },
+      "high_school_microeconomics": {
+        "count": 238,
+        "accuracy": 0.5966386554621849,
+        "cross_entropy": 0.9918468619360268
+      },
+      "high_school_physics": {
+        "count": 151,
+        "accuracy": 0.3841059602649007,
+        "cross_entropy": 1.443347348874768
+      },
+      "high_school_psychology": {
+        "count": 545,
+        "accuracy": 0.7889908256880734,
+        "cross_entropy": 0.61767339078435
+      },
+      "high_school_statistics": {
+        "count": 216,
+        "accuracy": 0.375,
+        "cross_entropy": 1.3855547871337168
+      },
+      "high_school_us_history": {
+        "count": 204,
+        "accuracy": 0.7549019607843137,
+        "cross_entropy": 0.7406648278430985
+      },
+      "high_school_world_history": {
+        "count": 237,
+        "accuracy": 0.7721518987341772,
+        "cross_entropy": 0.6684292701111305
+      },
+      "human_aging": {
+        "count": 223,
+        "accuracy": 0.6278026905829597,
+        "cross_entropy": 1.0655738255886085
+      },
+      "human_sexuality": {
+        "count": 131,
+        "accuracy": 0.6183206106870229,
+        "cross_entropy": 0.8992539439945774
+      },
+      "international_law": {
+        "count": 121,
+        "accuracy": 0.6694214876033058,
+        "cross_entropy": 0.9272543625321147
+      },
+      "jurisprudence": {
+        "count": 108,
+        "accuracy": 0.5277777777777778,
+        "cross_entropy": 1.000520885732301
+      },
+      "logical_fallacies": {
+        "count": 163,
+        "accuracy": 0.7055214723926381,
+        "cross_entropy": 0.6841493211254518
+      },
+      "machine_learning": {
+        "count": 112,
+        "accuracy": 0.49107142857142855,
+        "cross_entropy": 1.2704299114411697
+      },
+      "management": {
+        "count": 103,
+        "accuracy": 0.5922330097087378,
+        "cross_entropy": 0.9584478999858776
+      },
+      "marketing": {
+        "count": 234,
+        "accuracy": 0.7606837606837606,
+        "cross_entropy": 0.6061505726105773
+      },
+      "medical_genetics": {
+        "count": 100,
+        "accuracy": 0.59,
+        "cross_entropy": 1.0644908507401123
+      },
+      "miscellaneous": {
+        "count": 783,
+        "accuracy": 0.7318007662835249,
+        "cross_entropy": 0.7106550598512015
+      },
+      "moral_disputes": {
+        "count": 346,
+        "accuracy": 0.5491329479768786,
+        "cross_entropy": 1.136834565750283
+      },
+      "moral_scenarios": {
+        "count": 895,
+        "accuracy": 0.31508379888268156,
+        "cross_entropy": 1.3642810830523848
+      },
+      "nutrition": {
+        "count": 306,
+        "accuracy": 0.5751633986928104,
+        "cross_entropy": 1.0146325712983977
+      },
+      "philosophy": {
+        "count": 311,
+        "accuracy": 0.662379421221865,
+        "cross_entropy": 0.8530411823073228
+      },
+      "prehistory": {
+        "count": 324,
+        "accuracy": 0.6111111111111112,
+        "cross_entropy": 0.9289380495535658
+      },
+      "professional_accounting": {
+        "count": 282,
+        "accuracy": 0.40070921985815605,
+        "cross_entropy": 1.3500914321353672
+      },
+      "professional_law": {
+        "count": 1534,
+        "accuracy": 0.38461538461538464,
+        "cross_entropy": 1.5237564765307883
+      },
+      "professional_medicine": {
+        "count": 272,
+        "accuracy": 0.5919117647058824,
+        "cross_entropy": 0.9867178303025225
+      },
+      "professional_psychology": {
+        "count": 612,
+        "accuracy": 0.5702614379084967,
+        "cross_entropy": 1.070595306888743
+      },
+      "public_relations": {
+        "count": 110,
+        "accuracy": 0.6,
+        "cross_entropy": 0.9597401189787144
+      },
+      "security_studies": {
+        "count": 245,
+        "accuracy": 0.4897959183673469,
+        "cross_entropy": 1.3004036361541675
+      },
+      "sociology": {
+        "count": 201,
+        "accuracy": 0.7114427860696517,
+        "cross_entropy": 0.8196952332139187
+      },
+      "us_foreign_policy": {
+        "count": 100,
+        "accuracy": 0.7,
+        "cross_entropy": 0.6889484826242551
+      },
+      "virology": {
+        "count": 166,
+        "accuracy": 0.42771084337349397,
+        "cross_entropy": 1.6086278251436796
+      },
+      "world_religions": {
+        "count": 171,
+        "accuracy": 0.7426900584795322,
+        "cross_entropy": 0.6154696167770815
+      }
+    }
+  },
+  "mmlu-pro": {
+    "count": 12032,
+    "accuracy": 0.25847739361702127,
+    "cross_entropy": 2.108118913815138,
+    "subject_macro_accuracy": 0.2786557809266585,
+    "by_subject": {
+      "biology": {
+        "count": 717,
+        "accuracy": 0.5146443514644351,
+        "cross_entropy": 1.3925500361299508
+      },
+      "business": {
+        "count": 789,
+        "accuracy": 0.2002534854245881,
+        "cross_entropy": 2.2069302441030554
+      },
+      "chemistry": {
+        "count": 1132,
+        "accuracy": 0.16784452296819788,
+        "cross_entropy": 2.3072894425773103
+      },
+      "computer science": {
+        "count": 410,
+        "accuracy": 0.2634146341463415,
+        "cross_entropy": 2.1162964186562996
+      },
+      "economics": {
+        "count": 844,
+        "accuracy": 0.40639810426540285,
+        "cross_entropy": 1.6815391987075552
+      },
+      "engineering": {
+        "count": 969,
+        "accuracy": 0.19917440660474717,
+        "cross_entropy": 2.168544225348592
+      },
+      "health": {
+        "count": 818,
+        "accuracy": 0.3080684596577017,
+        "cross_entropy": 1.9696065175271886
+      },
+      "history": {
+        "count": 381,
+        "accuracy": 0.34120734908136485,
+        "cross_entropy": 2.0642242214772017
+      },
+      "law": {
+        "count": 1101,
+        "accuracy": 0.15440508628519528,
+        "cross_entropy": 2.505802847708928
+      },
+      "math": {
+        "count": 1351,
+        "accuracy": 0.15618060695780903,
+        "cross_entropy": 2.3241537561037644
+      },
+      "other": {
+        "count": 924,
+        "accuracy": 0.2857142857142857,
+        "cross_entropy": 2.132823463627621
+      },
+      "philosophy": {
+        "count": 499,
+        "accuracy": 0.2865731462925852,
+        "cross_entropy": 2.049592495632763
+      },
+      "physics": {
+        "count": 1299,
+        "accuracy": 0.1724403387220939,
+        "cross_entropy": 2.3229846835732917
+      },
+      "psychology": {
+        "count": 798,
+        "accuracy": 0.4448621553884712,
+        "cross_entropy": 1.6511628503565745
+      }
+    }
+  },
+  "arc-challenge": {
+    "count": 1172,
+    "accuracy": 0.7431740614334471,
+    "cross_entropy": 0.7022411317752579,
+    "subject_macro_accuracy": 0.7431740614334471,
+    "by_subject": {
+      "science": {
+        "count": 1172,
+        "accuracy": 0.7431740614334471,
+        "cross_entropy": 0.7022411317752579
+      }
+    }
+  },
+  "global-mmlu-en": {
+    "count": 14042,
+    "accuracy": 0.542016806722689,
+    "cross_entropy": 1.102402201483618,
+    "subject_macro_accuracy": 0.5504691946945567,
+    "by_subject": {
+      "abstract_algebra": {
+        "count": 100,
+        "accuracy": 0.34,
+        "cross_entropy": 1.5573279179632664
+      },
+      "anatomy": {
+        "count": 135,
+        "accuracy": 0.5407407407407407,
+        "cross_entropy": 1.1181789212213415
+      },
+      "astronomy": {
+        "count": 152,
+        "accuracy": 0.5921052631578947,
+        "cross_entropy": 0.9639744037321132
+      },
+      "business_ethics": {
+        "count": 100,
+        "accuracy": 0.58,
+        "cross_entropy": 0.9540902089886367
+      },
+      "clinical_knowledge": {
+        "count": 265,
+        "accuracy": 0.6037735849056604,
+        "cross_entropy": 0.9590089283479413
+      },
+      "college_biology": {
+        "count": 144,
+        "accuracy": 0.5555555555555556,
+        "cross_entropy": 1.0050296177376166
+      },
+      "college_chemistry": {
+        "count": 100,
+        "accuracy": 0.37,
+        "cross_entropy": 1.3799539654888213
+      },
+      "college_computer_science": {
+        "count": 100,
+        "accuracy": 0.5,
+        "cross_entropy": 1.241915839239955
+      },
+      "college_mathematics": {
+        "count": 100,
+        "accuracy": 0.34,
+        "cross_entropy": 1.4468615517020225
+      },
+      "college_medicine": {
+        "count": 173,
+        "accuracy": 0.5549132947976878,
+        "cross_entropy": 1.1665187150999
+      },
+      "college_physics": {
+        "count": 102,
+        "accuracy": 0.3627450980392157,
+        "cross_entropy": 1.4302472775327224
+      },
+      "computer_security": {
+        "count": 100,
+        "accuracy": 0.63,
+        "cross_entropy": 1.0107634974550457
+      },
+      "conceptual_physics": {
+        "count": 235,
+        "accuracy": 0.5404255319148936,
+        "cross_entropy": 1.1387685925422355
+      },
+      "econometrics": {
+        "count": 114,
+        "accuracy": 0.40350877192982454,
+        "cross_entropy": 1.3448895230366473
+      },
+      "electrical_engineering": {
+        "count": 145,
+        "accuracy": 0.46206896551724136,
+        "cross_entropy": 1.2029308392698395
+      },
+      "elementary_mathematics": {
+        "count": 378,
+        "accuracy": 0.36243386243386244,
+        "cross_entropy": 1.4313725690744206
+      },
+      "formal_logic": {
+        "count": 126,
+        "accuracy": 0.4523809523809524,
+        "cross_entropy": 1.368050843063328
+      },
+      "global_facts": {
+        "count": 100,
+        "accuracy": 0.35,
+        "cross_entropy": 1.3631644319742917
+      },
+      "high_school_biology": {
+        "count": 310,
+        "accuracy": 0.6290322580645161,
+        "cross_entropy": 0.9471559296012856
+      },
+      "high_school_chemistry": {
+        "count": 203,
+        "accuracy": 0.43349753694581283,
+        "cross_entropy": 1.362590487477521
+      },
+      "high_school_computer_science": {
+        "count": 100,
+        "accuracy": 0.53,
+        "cross_entropy": 1.1193302588770166
+      },
+      "high_school_european_history": {
+        "count": 165,
+        "accuracy": 0.6909090909090909,
+        "cross_entropy": 0.8264343519017777
+      },
+      "high_school_geography": {
+        "count": 198,
+        "accuracy": 0.6363636363636364,
+        "cross_entropy": 0.9648543573293313
+      },
+      "high_school_government_and_politics": {
+        "count": 193,
+        "accuracy": 0.7357512953367875,
+        "cross_entropy": 0.7162037571245261
+      },
+      "high_school_macroeconomics": {
+        "count": 390,
+        "accuracy": 0.5769230769230769,
+        "cross_entropy": 1.0369781735341232
+      },
+      "high_school_mathematics": {
+        "count": 270,
+        "accuracy": 0.2851851851851852,
+        "cross_entropy": 1.4227549886261974
+      },
+      "high_school_microeconomics": {
+        "count": 238,
+        "accuracy": 0.5966386554621849,
+        "cross_entropy": 0.9918468619360268
+      },
+      "high_school_physics": {
+        "count": 151,
+        "accuracy": 0.3841059602649007,
+        "cross_entropy": 1.443347348874768
+      },
+      "high_school_psychology": {
+        "count": 545,
+        "accuracy": 0.7889908256880734,
+        "cross_entropy": 0.61767339078435
+      },
+      "high_school_statistics": {
+        "count": 216,
+        "accuracy": 0.375,
+        "cross_entropy": 1.3855547871337168
+      },
+      "high_school_us_history": {
+        "count": 204,
+        "accuracy": 0.7549019607843137,
+        "cross_entropy": 0.7406648278430985
+      },
+      "high_school_world_history": {
+        "count": 237,
+        "accuracy": 0.7721518987341772,
+        "cross_entropy": 0.6684292701111305
+      },
+      "human_aging": {
+        "count": 223,
+        "accuracy": 0.6278026905829597,
+        "cross_entropy": 1.0655738255886085
+      },
+      "human_sexuality": {
+        "count": 131,
+        "accuracy": 0.6183206106870229,
+        "cross_entropy": 0.8992539439945774
+      },
+      "international_law": {
+        "count": 121,
+        "accuracy": 0.6694214876033058,
+        "cross_entropy": 0.9272543625321147
+      },
+      "jurisprudence": {
+        "count": 108,
+        "accuracy": 0.5277777777777778,
+        "cross_entropy": 1.000520885732301
+      },
+      "logical_fallacies": {
+        "count": 163,
+        "accuracy": 0.7055214723926381,
+        "cross_entropy": 0.6841493211254518
+      },
+      "machine_learning": {
+        "count": 112,
+        "accuracy": 0.49107142857142855,
+        "cross_entropy": 1.2704299114411697
+      },
+      "management": {
+        "count": 103,
+        "accuracy": 0.5922330097087378,
+        "cross_entropy": 0.9584478999858776
+      },
+      "marketing": {
+        "count": 234,
+        "accuracy": 0.7606837606837606,
+        "cross_entropy": 0.6061505726105773
+      },
+      "medical_genetics": {
+        "count": 100,
+        "accuracy": 0.59,
+        "cross_entropy": 1.0644908507401123
+      },
+      "miscellaneous": {
+        "count": 783,
+        "accuracy": 0.7318007662835249,
+        "cross_entropy": 0.7106550598512015
+      },
+      "moral_disputes": {
+        "count": 346,
+        "accuracy": 0.5491329479768786,
+        "cross_entropy": 1.136834565750283
+      },
+      "moral_scenarios": {
+        "count": 895,
+        "accuracy": 0.31508379888268156,
+        "cross_entropy": 1.3642810830523848
+      },
+      "nutrition": {
+        "count": 306,
+        "accuracy": 0.5751633986928104,
+        "cross_entropy": 1.0146325712983977
+      },
+      "philosophy": {
+        "count": 311,
+        "accuracy": 0.662379421221865,
+        "cross_entropy": 0.8530411823073228
+      },
+      "prehistory": {
+        "count": 324,
+        "accuracy": 0.6111111111111112,
+        "cross_entropy": 0.9289380495535658
+      },
+      "professional_accounting": {
+        "count": 282,
+        "accuracy": 0.40070921985815605,
+        "cross_entropy": 1.3500914321353672
+      },
+      "professional_law": {
+        "count": 1534,
+        "accuracy": 0.38461538461538464,
+        "cross_entropy": 1.5237564765307883
+      },
+      "professional_medicine": {
+        "count": 272,
+        "accuracy": 0.5919117647058824,
+        "cross_entropy": 0.9867178303025225
+      },
+      "professional_psychology": {
+        "count": 612,
+        "accuracy": 0.5702614379084967,
+        "cross_entropy": 1.070595306888743
+      },
+      "public_relations": {
+        "count": 110,
+        "accuracy": 0.6,
+        "cross_entropy": 0.9597401189787144
+      },
+      "security_studies": {
+        "count": 245,
+        "accuracy": 0.4897959183673469,
+        "cross_entropy": 1.3004036361541675
+      },
+      "sociology": {
+        "count": 201,
+        "accuracy": 0.7114427860696517,
+        "cross_entropy": 0.8196952332139187
+      },
+      "us_foreign_policy": {
+        "count": 100,
+        "accuracy": 0.7,
+        "cross_entropy": 0.6889484826242551
+      },
+      "virology": {
+        "count": 166,
+        "accuracy": 0.42771084337349397,
+        "cross_entropy": 1.6086278251436796
+      },
+      "world_religions": {
+        "count": 171,
+        "accuracy": 0.7426900584795322,
+        "cross_entropy": 0.6154696167770815
+      }
+    }
+  },
+  "global-mmlu-de": {
+    "count": 14042,
+    "accuracy": 0.4955846745477852,
+    "cross_entropy": 1.1750688689048627,
+    "subject_macro_accuracy": 0.5083123802342864,
+    "by_subject": {
+      "abstract_algebra": {
+        "count": 100,
+        "accuracy": 0.31,
+        "cross_entropy": 1.666918942630291
+      },
+      "anatomy": {
+        "count": 135,
+        "accuracy": 0.4888888888888889,
+        "cross_entropy": 1.1290712977483592
+      },
+      "astronomy": {
+        "count": 152,
+        "accuracy": 0.5723684210526315,
+        "cross_entropy": 1.0345976437889284
+      },
+      "business_ethics": {
+        "count": 100,
+        "accuracy": 0.54,
+        "cross_entropy": 1.0346434672828764
+      },
+      "clinical_knowledge": {
+        "count": 265,
+        "accuracy": 0.5509433962264151,
+        "cross_entropy": 1.0523998251246323
+      },
+      "college_biology": {
+        "count": 144,
+        "accuracy": 0.4930555555555556,
+        "cross_entropy": 1.1020191962791916
+      },
+      "college_chemistry": {
+        "count": 100,
+        "accuracy": 0.42,
+        "cross_entropy": 1.3777188950404524
+      },
+      "college_computer_science": {
+        "count": 100,
+        "accuracy": 0.45,
+        "cross_entropy": 1.2515859204530715
+      },
+      "college_mathematics": {
+        "count": 100,
+        "accuracy": 0.37,
+        "cross_entropy": 1.4230582493543624
+      },
+      "college_medicine": {
+        "count": 173,
+        "accuracy": 0.5433526011560693,
+        "cross_entropy": 1.1454739349670815
+      },
+      "college_physics": {
+        "count": 102,
+        "accuracy": 0.3137254901960784,
+        "cross_entropy": 1.4793059253590364
+      },
+      "computer_security": {
+        "count": 100,
+        "accuracy": 0.54,
+        "cross_entropy": 1.146726480871439
+      },
+      "conceptual_physics": {
+        "count": 235,
+        "accuracy": 0.4978723404255319,
+        "cross_entropy": 1.2674043218189097
+      },
+      "econometrics": {
+        "count": 114,
+        "accuracy": 0.3684210526315789,
+        "cross_entropy": 1.3885244399047734
+      },
+      "electrical_engineering": {
+        "count": 145,
+        "accuracy": 0.4827586206896552,
+        "cross_entropy": 1.1400694507977058
+      },
+      "elementary_mathematics": {
+        "count": 378,
+        "accuracy": 0.3253968253968254,
+        "cross_entropy": 1.4376390288170013
+      },
+      "formal_logic": {
+        "count": 126,
+        "accuracy": 0.4126984126984127,
+        "cross_entropy": 1.4032078795726337
+      },
+      "global_facts": {
+        "count": 100,
+        "accuracy": 0.27,
+        "cross_entropy": 1.365354163274169
+      },
+      "high_school_biology": {
+        "count": 310,
+        "accuracy": 0.5870967741935483,
+        "cross_entropy": 1.0166909519237497
+      },
+      "high_school_chemistry": {
+        "count": 203,
+        "accuracy": 0.37438423645320196,
+        "cross_entropy": 1.4522224334550315
+      },
+      "high_school_computer_science": {
+        "count": 100,
+        "accuracy": 0.56,
+        "cross_entropy": 1.201426480561495
+      },
+      "high_school_european_history": {
+        "count": 165,
+        "accuracy": 0.6545454545454545,
+        "cross_entropy": 0.8911671363607501
+      },
+      "high_school_geography": {
+        "count": 198,
+        "accuracy": 0.5959595959595959,
+        "cross_entropy": 1.0061323348881979
+      },
+      "high_school_government_and_politics": {
+        "count": 193,
+        "accuracy": 0.6321243523316062,
+        "cross_entropy": 0.908021644388755
+      },
+      "high_school_macroeconomics": {
+        "count": 390,
+        "accuracy": 0.5461538461538461,
+        "cross_entropy": 1.070219532849315
+      },
+      "high_school_mathematics": {
+        "count": 270,
+        "accuracy": 0.3,
+        "cross_entropy": 1.4577587145346182
+      },
+      "high_school_microeconomics": {
+        "count": 238,
+        "accuracy": 0.5462184873949579,
+        "cross_entropy": 1.1134431806799931
+      },
+      "high_school_physics": {
+        "count": 151,
+        "accuracy": 0.3576158940397351,
+        "cross_entropy": 1.4382745974407292
+      },
+      "high_school_psychology": {
+        "count": 545,
+        "accuracy": 0.7155963302752294,
+        "cross_entropy": 0.7486347668560718
+      },
+      "high_school_statistics": {
+        "count": 216,
+        "accuracy": 0.3287037037037037,
+        "cross_entropy": 1.4700906697867646
+      },
+      "high_school_us_history": {
+        "count": 204,
+        "accuracy": 0.6470588235294118,
+        "cross_entropy": 0.9455183027877117
+      },
+      "high_school_world_history": {
+        "count": 237,
+        "accuracy": 0.7046413502109705,
+        "cross_entropy": 0.8191902454267551
+      },
+      "human_aging": {
+        "count": 223,
+        "accuracy": 0.547085201793722,
+        "cross_entropy": 1.1724915983856994
+      },
+      "human_sexuality": {
+        "count": 131,
+        "accuracy": 0.5572519083969466,
+        "cross_entropy": 0.9648648677673725
+      },
+      "international_law": {
+        "count": 121,
+        "accuracy": 0.5785123966942148,
+        "cross_entropy": 1.0594072811736548
+      },
+      "jurisprudence": {
+        "count": 108,
+        "accuracy": 0.5555555555555556,
+        "cross_entropy": 1.0759510803036392
+      },
+      "logical_fallacies": {
+        "count": 163,
+        "accuracy": 0.6625766871165644,
+        "cross_entropy": 0.8658473663184895
+      },
+      "machine_learning": {
+        "count": 112,
+        "accuracy": 0.42857142857142855,
+        "cross_entropy": 1.304645024173494
+      },
+      "management": {
+        "count": 103,
+        "accuracy": 0.6116504854368932,
+        "cross_entropy": 0.9571755149320347
+      },
+      "marketing": {
+        "count": 234,
+        "accuracy": 0.7222222222222222,
+        "cross_entropy": 0.7394909324884638
+      },
+      "medical_genetics": {
+        "count": 100,
+        "accuracy": 0.55,
+        "cross_entropy": 1.0925003197602927
+      },
+      "miscellaneous": {
+        "count": 783,
+        "accuracy": 0.6922094508301405,
+        "cross_entropy": 0.7921714424725045
+      },
+      "moral_disputes": {
+        "count": 346,
+        "accuracy": 0.5057803468208093,
+        "cross_entropy": 1.1685775108662342
+      },
+      "moral_scenarios": {
+        "count": 895,
+        "accuracy": 0.2558659217877095,
+        "cross_entropy": 1.4521920148553795
+      },
+      "nutrition": {
+        "count": 306,
+        "accuracy": 0.5784313725490197,
+        "cross_entropy": 1.0314438817474771
+      },
+      "philosophy": {
+        "count": 311,
+        "accuracy": 0.5659163987138264,
+        "cross_entropy": 1.0254787559144893
+      },
+      "prehistory": {
+        "count": 324,
+        "accuracy": 0.5493827160493827,
+        "cross_entropy": 1.0280693235791312
+      },
+      "professional_accounting": {
+        "count": 282,
+        "accuracy": 0.3475177304964539,
+        "cross_entropy": 1.424215919457059
+      },
+      "professional_law": {
+        "count": 1534,
+        "accuracy": 0.3428943937418514,
+        "cross_entropy": 1.5531278345661026
+      },
+      "professional_medicine": {
+        "count": 272,
+        "accuracy": 0.5367647058823529,
+        "cross_entropy": 1.1295380001504194
+      },
+      "professional_psychology": {
+        "count": 612,
+        "accuracy": 0.5,
+        "cross_entropy": 1.1619501390047007
+      },
+      "public_relations": {
+        "count": 110,
+        "accuracy": 0.5636363636363636,
+        "cross_entropy": 1.0497939613182097
+      },
+      "security_studies": {
+        "count": 245,
+        "accuracy": 0.40408163265306124,
+        "cross_entropy": 1.319005183829945
+      },
+      "sociology": {
+        "count": 201,
+        "accuracy": 0.6965174129353234,
+        "cross_entropy": 0.8452864310267469
+      },
+      "us_foreign_policy": {
+        "count": 100,
+        "accuracy": 0.64,
+        "cross_entropy": 0.8453891428932547
+      },
+      "virology": {
+        "count": 166,
+        "accuracy": 0.39759036144578314,
+        "cross_entropy": 1.5999111264203507
+      },
+      "world_religions": {
+        "count": 171,
+        "accuracy": 0.6842105263157895,
+        "cross_entropy": 0.7303638097458064
+      }
+    }
+  },
+  "global-mmlu-fr": {
+    "count": 14042,
+    "accuracy": 0.5009257940464321,
+    "cross_entropy": 1.1577590077375945,
+    "subject_macro_accuracy": 0.5082913884085064,
+    "by_subject": {
+      "abstract_algebra": {
+        "count": 100,
+        "accuracy": 0.26,
+        "cross_entropy": 1.6113609763979913
+      },
+      "anatomy": {
+        "count": 135,
+        "accuracy": 0.4962962962962963,
+        "cross_entropy": 1.12320164591074
+      },
+      "astronomy": {
+        "count": 152,
+        "accuracy": 0.5592105263157895,
+        "cross_entropy": 0.9967250513023158
+      },
+      "business_ethics": {
+        "count": 100,
+        "accuracy": 0.51,
+        "cross_entropy": 1.0694146002456546
+      },
+      "clinical_knowledge": {
+        "count": 265,
+        "accuracy": 0.5169811320754717,
+        "cross_entropy": 1.0631074685814246
+      },
+      "college_biology": {
+        "count": 144,
+        "accuracy": 0.5555555555555556,
+        "cross_entropy": 1.0609718394019485
+      },
+      "college_chemistry": {
+        "count": 100,
+        "accuracy": 0.37,
+        "cross_entropy": 1.370921095609665
+      },
+      "college_computer_science": {
+        "count": 100,
+        "accuracy": 0.48,
+        "cross_entropy": 1.2835415703058244
+      },
+      "college_mathematics": {
+        "count": 100,
+        "accuracy": 0.29,
+        "cross_entropy": 1.4344903421401978
+      },
+      "college_medicine": {
+        "count": 173,
+        "accuracy": 0.4624277456647399,
+        "cross_entropy": 1.1947360072887874
+      },
+      "college_physics": {
+        "count": 102,
+        "accuracy": 0.28431372549019607,
+        "cross_entropy": 1.4516954327769138
+      },
+      "computer_security": {
+        "count": 100,
+        "accuracy": 0.55,
+        "cross_entropy": 1.070463748537004
+      },
+      "conceptual_physics": {
+        "count": 235,
+        "accuracy": 0.4765957446808511,
+        "cross_entropy": 1.2327273755948593
+      },
+      "econometrics": {
+        "count": 114,
+        "accuracy": 0.3508771929824561,
+        "cross_entropy": 1.4232001330768853
+      },
+      "electrical_engineering": {
+        "count": 145,
+        "accuracy": 0.45517241379310347,
+        "cross_entropy": 1.1925356165088457
+      },
+      "elementary_mathematics": {
+        "count": 378,
+        "accuracy": 0.36243386243386244,
+        "cross_entropy": 1.4038893619328048
+      },
+      "formal_logic": {
+        "count": 126,
+        "accuracy": 0.4603174603174603,
+        "cross_entropy": 1.4013399913434
+      },
+      "global_facts": {
+        "count": 100,
+        "accuracy": 0.33,
+        "cross_entropy": 1.3721689892560243
+      },
+      "high_school_biology": {
+        "count": 310,
+        "accuracy": 0.5806451612903226,
+        "cross_entropy": 1.017018394514678
+      },
+      "high_school_chemistry": {
+        "count": 203,
+        "accuracy": 0.39901477832512317,
+        "cross_entropy": 1.362860318117321
+      },
+      "high_school_computer_science": {
+        "count": 100,
+        "accuracy": 0.56,
+        "cross_entropy": 1.1608246289752424
+      },
+      "high_school_european_history": {
+        "count": 165,
+        "accuracy": 0.6909090909090909,
+        "cross_entropy": 0.8453701359078739
+      },
+      "high_school_geography": {
+        "count": 198,
+        "accuracy": 0.5656565656565656,
+        "cross_entropy": 1.0326799482031903
+      },
+      "high_school_government_and_politics": {
+        "count": 193,
+        "accuracy": 0.616580310880829,
+        "cross_entropy": 0.9535797063328828
+      },
+      "high_school_macroeconomics": {
+        "count": 390,
+        "accuracy": 0.5051282051282051,
+        "cross_entropy": 1.1462562230236542
+      },
+      "high_school_mathematics": {
+        "count": 270,
+        "accuracy": 0.29259259259259257,
+        "cross_entropy": 1.4248290625435334
+      },
+      "high_school_microeconomics": {
+        "count": 238,
+        "accuracy": 0.5546218487394958,
+        "cross_entropy": 1.1153258022758328
+      },
+      "high_school_physics": {
+        "count": 151,
+        "accuracy": 0.37748344370860926,
+        "cross_entropy": 1.4013318747578078
+      },
+      "high_school_psychology": {
+        "count": 545,
+        "accuracy": 0.7064220183486238,
+        "cross_entropy": 0.7968921819214769
+      },
+      "high_school_statistics": {
+        "count": 216,
+        "accuracy": 0.3287037037037037,
+        "cross_entropy": 1.4208466860258744
+      },
+      "high_school_us_history": {
+        "count": 204,
+        "accuracy": 0.696078431372549,
+        "cross_entropy": 0.86203304197589
+      },
+      "high_school_world_history": {
+        "count": 237,
+        "accuracy": 0.7257383966244726,
+        "cross_entropy": 0.7849567739689872
+      },
+      "human_aging": {
+        "count": 223,
+        "accuracy": 0.5650224215246636,
+        "cross_entropy": 1.1068571410538637
+      },
+      "human_sexuality": {
+        "count": 131,
+        "accuracy": 0.5801526717557252,
+        "cross_entropy": 1.0136700379164563
+      },
+      "international_law": {
+        "count": 121,
+        "accuracy": 0.5867768595041323,
+        "cross_entropy": 0.9899506078925261
+      },
+      "jurisprudence": {
+        "count": 108,
+        "accuracy": 0.5925925925925926,
+        "cross_entropy": 1.0515197870425053
+      },
+      "logical_fallacies": {
+        "count": 163,
+        "accuracy": 0.588957055214724,
+        "cross_entropy": 0.9518916063050687
+      },
+      "machine_learning": {
+        "count": 112,
+        "accuracy": 0.4017857142857143,
+        "cross_entropy": 1.2904017893597484
+      },
+      "management": {
+        "count": 103,
+        "accuracy": 0.5825242718446602,
+        "cross_entropy": 0.9024888677160862
+      },
+      "marketing": {
+        "count": 234,
+        "accuracy": 0.717948717948718,
+        "cross_entropy": 0.7691917032775525
+      },
+      "medical_genetics": {
+        "count": 100,
+        "accuracy": 0.52,
+        "cross_entropy": 1.0277972072176635
+      },
+      "miscellaneous": {
+        "count": 783,
+        "accuracy": 0.6794380587484036,
+        "cross_entropy": 0.7911976613489421
+      },
+      "moral_disputes": {
+        "count": 346,
+        "accuracy": 0.5173410404624278,
+        "cross_entropy": 1.1696122227266237
+      },
+      "moral_scenarios": {
+        "count": 895,
+        "accuracy": 0.3340782122905028,
+        "cross_entropy": 1.3697776808419042
+      },
+      "nutrition": {
+        "count": 306,
+        "accuracy": 0.565359477124183,
+        "cross_entropy": 1.0310916409072972
+      },
+      "philosophy": {
+        "count": 311,
+        "accuracy": 0.6141479099678456,
+        "cross_entropy": 0.9610580658387404
+      },
+      "prehistory": {
+        "count": 324,
+        "accuracy": 0.5771604938271605,
+        "cross_entropy": 0.9963665539887446
+      },
+      "professional_accounting": {
+        "count": 282,
+        "accuracy": 0.3475177304964539,
+        "cross_entropy": 1.3846833906433684
+      },
+      "professional_law": {
+        "count": 1534,
+        "accuracy": 0.3520208604954368,
+        "cross_entropy": 1.5219186975716612
+      },
+      "professional_medicine": {
+        "count": 272,
+        "accuracy": 0.5404411764705882,
+        "cross_entropy": 1.085592736483223
+      },
+      "professional_psychology": {
+        "count": 612,
+        "accuracy": 0.49673202614379086,
+        "cross_entropy": 1.1771753002749452
+      },
+      "public_relations": {
+        "count": 110,
+        "accuracy": 0.5272727272727272,
+        "cross_entropy": 1.0688334485515951
+      },
+      "security_studies": {
+        "count": 245,
+        "accuracy": 0.44081632653061226,
+        "cross_entropy": 1.2695371324918707
+      },
+      "sociology": {
+        "count": 201,
+        "accuracy": 0.6467661691542289,
+        "cross_entropy": 0.8920823315224223
+      },
+      "us_foreign_policy": {
+        "count": 100,
+        "accuracy": 0.67,
+        "cross_entropy": 0.7953403963893652
+      },
+      "virology": {
+        "count": 166,
+        "accuracy": 0.4036144578313253,
+        "cross_entropy": 1.493661255867456
+      },
+      "world_religions": {
+        "count": 171,
+        "accuracy": 0.7543859649122807,
+        "cross_entropy": 0.6529350574604884
+      }
+    }
+  },
+  "global-mmlu-it": {
+    "count": 14042,
+    "accuracy": 0.5017803731662156,
+    "cross_entropy": 1.1607543796193178,
+    "subject_macro_accuracy": 0.5075667851837479,
+    "by_subject": {
+      "abstract_algebra": {
+        "count": 100,
+        "accuracy": 0.25,
+        "cross_entropy": 1.6210494250059129
+      },
+      "anatomy": {
+        "count": 135,
+        "accuracy": 0.4962962962962963,
+        "cross_entropy": 1.171378898254975
+      },
+      "astronomy": {
+        "count": 152,
+        "accuracy": 0.5592105263157895,
+        "cross_entropy": 1.0237960235865198
+      },
+      "business_ethics": {
+        "count": 100,
+        "accuracy": 0.5,
+        "cross_entropy": 1.0138122433796526
+      },
+      "clinical_knowledge": {
+        "count": 265,
+        "accuracy": 0.5132075471698113,
+        "cross_entropy": 1.1192642342387085
+      },
+      "college_biology": {
+        "count": 144,
+        "accuracy": 0.5625,
+        "cross_entropy": 1.0372711812831565
+      },
+      "college_chemistry": {
+        "count": 100,
+        "accuracy": 0.37,
+        "cross_entropy": 1.3725971480086445
+      },
+      "college_computer_science": {
+        "count": 100,
+        "accuracy": 0.43,
+        "cross_entropy": 1.2820337723195552
+      },
+      "college_mathematics": {
+        "count": 100,
+        "accuracy": 0.33,
+        "cross_entropy": 1.4455538290739058
+      },
+      "college_medicine": {
+        "count": 173,
+        "accuracy": 0.48554913294797686,
+        "cross_entropy": 1.1592204669043638
+      },
+      "college_physics": {
+        "count": 102,
+        "accuracy": 0.3137254901960784,
+        "cross_entropy": 1.4508999879015427
+      },
+      "computer_security": {
+        "count": 100,
+        "accuracy": 0.52,
+        "cross_entropy": 1.1036741812713444
+      },
+      "conceptual_physics": {
+        "count": 235,
+        "accuracy": 0.4723404255319149,
+        "cross_entropy": 1.2144653793582891
+      },
+      "econometrics": {
+        "count": 114,
+        "accuracy": 0.38596491228070173,
+        "cross_entropy": 1.369050018097225
+      },
+      "electrical_engineering": {
+        "count": 145,
+        "accuracy": 0.46206896551724136,
+        "cross_entropy": 1.2268566250030337
+      },
+      "elementary_mathematics": {
+        "count": 378,
+        "accuracy": 0.36243386243386244,
+        "cross_entropy": 1.3924820019922677
+      },
+      "formal_logic": {
+        "count": 126,
+        "accuracy": 0.3888888888888889,
+        "cross_entropy": 1.439328481635404
+      },
+      "global_facts": {
+        "count": 100,
+        "accuracy": 0.33,
+        "cross_entropy": 1.3652647494524717
+      },
+      "high_school_biology": {
+        "count": 310,
+        "accuracy": 0.603225806451613,
+        "cross_entropy": 0.9921681572082303
+      },
+      "high_school_chemistry": {
+        "count": 203,
+        "accuracy": 0.4039408866995074,
+        "cross_entropy": 1.3366614043657563
+      },
+      "high_school_computer_science": {
+        "count": 100,
+        "accuracy": 0.56,
+        "cross_entropy": 1.1447741600777954
+      },
+      "high_school_european_history": {
+        "count": 165,
+        "accuracy": 0.7151515151515152,
+        "cross_entropy": 0.8638494954416246
+      },
+      "high_school_geography": {
+        "count": 198,
+        "accuracy": 0.5757575757575758,
+        "cross_entropy": 1.0245273302325677
+      },
+      "high_school_government_and_politics": {
+        "count": 193,
+        "accuracy": 0.5906735751295337,
+        "cross_entropy": 0.9908318015785377
+      },
+      "high_school_macroeconomics": {
+        "count": 390,
+        "accuracy": 0.5256410256410257,
+        "cross_entropy": 1.113624337557942
+      },
+      "high_school_mathematics": {
+        "count": 270,
+        "accuracy": 0.2851851851851852,
+        "cross_entropy": 1.4167784190840191
+      },
+      "high_school_microeconomics": {
+        "count": 238,
+        "accuracy": 0.5252100840336135,
+        "cross_entropy": 1.1143694788827991
+      },
+      "high_school_physics": {
+        "count": 151,
+        "accuracy": 0.33112582781456956,
+        "cross_entropy": 1.441373001216658
+      },
+      "high_school_psychology": {
+        "count": 545,
+        "accuracy": 0.7394495412844037,
+        "cross_entropy": 0.7384306924058757
+      },
+      "high_school_statistics": {
+        "count": 216,
+        "accuracy": 0.3425925925925926,
+        "cross_entropy": 1.4278964961671994
+      },
+      "high_school_us_history": {
+        "count": 204,
+        "accuracy": 0.6617647058823529,
+        "cross_entropy": 0.8475714905390643
+      },
+      "high_school_world_history": {
+        "count": 237,
+        "accuracy": 0.7257383966244726,
+        "cross_entropy": 0.7939195015373393
+      },
+      "human_aging": {
+        "count": 223,
+        "accuracy": 0.5605381165919282,
+        "cross_entropy": 1.0964368606161643
+      },
+      "human_sexuality": {
+        "count": 131,
+        "accuracy": 0.5343511450381679,
+        "cross_entropy": 1.0083909637920332
+      },
+      "international_law": {
+        "count": 121,
+        "accuracy": 0.6198347107438017,
+        "cross_entropy": 1.007150574679648
+      },
+      "jurisprudence": {
+        "count": 108,
+        "accuracy": 0.5370370370370371,
+        "cross_entropy": 1.1080991412961372
+      },
+      "logical_fallacies": {
+        "count": 163,
+        "accuracy": 0.656441717791411,
+        "cross_entropy": 0.8773751274098363
+      },
+      "machine_learning": {
+        "count": 112,
+        "accuracy": 0.4642857142857143,
+        "cross_entropy": 1.257674781272986
+      },
+      "management": {
+        "count": 103,
+        "accuracy": 0.5242718446601942,
+        "cross_entropy": 1.0188431420670914
+      },
+      "marketing": {
+        "count": 234,
+        "accuracy": 0.717948717948718,
+        "cross_entropy": 0.7489616675202886
+      },
+      "medical_genetics": {
+        "count": 100,
+        "accuracy": 0.54,
+        "cross_entropy": 1.0501515991613268
+      },
+      "miscellaneous": {
+        "count": 783,
+        "accuracy": 0.6934865900383141,
+        "cross_entropy": 0.7877915910903446
+      },
+      "moral_disputes": {
+        "count": 346,
+        "accuracy": 0.5375722543352601,
+        "cross_entropy": 1.1759578468765246
+      },
+      "moral_scenarios": {
+        "count": 895,
+        "accuracy": 0.3217877094972067,
+        "cross_entropy": 1.389791103648074
+      },
+      "nutrition": {
+        "count": 306,
+        "accuracy": 0.5588235294117647,
+        "cross_entropy": 1.040022869061776
+      },
+      "philosophy": {
+        "count": 311,
+        "accuracy": 0.6045016077170418,
+        "cross_entropy": 0.9721916195250736
+      },
+      "prehistory": {
+        "count": 324,
+        "accuracy": 0.558641975308642,
+        "cross_entropy": 1.0076529629712487
+      },
+      "professional_accounting": {
+        "count": 282,
+        "accuracy": 0.35815602836879434,
+        "cross_entropy": 1.4062628213857822
+      },
+      "professional_law": {
+        "count": 1534,
+        "accuracy": 0.3396349413298566,
+        "cross_entropy": 1.5548069540980713
+      },
+      "professional_medicine": {
+        "count": 272,
+        "accuracy": 0.5367647058823529,
+        "cross_entropy": 1.0692553403650356
+      },
+      "professional_psychology": {
+        "count": 612,
+        "accuracy": 0.5163398692810458,
+        "cross_entropy": 1.1524782874743194
+      },
+      "public_relations": {
+        "count": 110,
+        "accuracy": 0.509090909090909,
+        "cross_entropy": 1.057994699740613
+      },
+      "security_studies": {
+        "count": 245,
+        "accuracy": 0.44081632653061226,
+        "cross_entropy": 1.304678751284979
+      },
+      "sociology": {
+        "count": 201,
+        "accuracy": 0.6766169154228856,
+        "cross_entropy": 0.863985822124833
+      },
+      "us_foreign_policy": {
+        "count": 100,
+        "accuracy": 0.6,
+        "cross_entropy": 0.8487073197308928
+      },
+      "virology": {
+        "count": 166,
+        "accuracy": 0.46987951807228917,
+        "cross_entropy": 1.504278143402189
+      },
+      "world_religions": {
+        "count": 171,
+        "accuracy": 0.7368421052631579,
+        "cross_entropy": 0.68982494636272
+      }
+    }
+  }
+}

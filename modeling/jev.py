@@ -128,7 +128,8 @@ class JevModel(nn.Module):
         """Save the default LoRA adapter, pointer head, and configuration.
 
         Requires an attached default PEFT adapter. Frozen backbone weights and
-        optimizer state are not saved.
+        optimizer state are not saved. Floating-point weights are saved as CPU
+        bfloat16 copies to reduce checkpoint size without changing live parameters.
 
         Args:
             directory: Output directory, created if needed.
@@ -154,13 +155,21 @@ class JevModel(nn.Module):
             json.dump(config, f, indent=2)
             f.write("\n")
 
-        torch.save(
-            {
-                "adapter": get_peft_model_state_dict(self.llm),
-                "head": self.pointerhead.state_dict(),
-            },
-            os.path.join(directory, "jev.pt"),
-        )
+        weights = {
+            "adapter": get_peft_model_state_dict(self.llm),
+            "head": self.pointerhead.state_dict(),
+        }
+        weights = {
+            name: {
+                key: value.detach().to(
+                    device="cpu",
+                    dtype=torch.bfloat16 if value.is_floating_point() else value.dtype,
+                )
+                for key, value in state.items()
+            }
+            for name, state in weights.items()
+        }
+        torch.save(weights, os.path.join(directory, "jev.pt"))
 
     @classmethod
     def from_pretrained(

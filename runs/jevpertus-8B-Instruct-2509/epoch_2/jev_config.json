@@ -1,0 +1,18 @@
+{
+  "backbone": {
+    "model_id": "swiss-ai/Apertus-8B-Instruct-2509",
+    "revision": "main"
+  },
+  "head": {
+    "hidden_dim": 4096,
+    "pointer_dim": 256
+  },
+  "training": {
+    "data": "data",
+    "epochs": 2,
+    "batch_size": 1,
+    "lr": 5e-05,
+    "seed": 0,
+    "precision": "torch.bfloat16"
+  }
+}
