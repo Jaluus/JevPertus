@@ -10,7 +10,7 @@ from dataloader import Question, encode_question
 from modeling.apertus import load_apertus
 from modeling.jev import JevModel
 
-CHECKPOINT = "runs/jevpertus_V4/epoch_2"
+CHECKPOINT = "runs/jevpertus-v1.5-8B/epoch_2"
 DEVICE = "cuda:2" if torch.cuda.is_available() else "cpu"
 QUESTIONS: list[Question] = [
     {
