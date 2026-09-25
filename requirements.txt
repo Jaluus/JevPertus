@@ -1,3 +1,4 @@
+datasets
 einops
 huggingface_hub
 peft
