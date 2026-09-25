@@ -11,7 +11,7 @@ from modeling.apertus import load_apertus
 from modeling.jev import JevModel
 
 CHECKPOINT = "runs/jevpertus-v1.5-8B/epoch_2"
-DEVICE = "cuda:2" if torch.cuda.is_available() else "cpu"
+DEVICE = "cuda:0" if torch.cuda.is_available() else "cpu"
 QUESTIONS: list[Question] = [
     {
         "type": "choice",
