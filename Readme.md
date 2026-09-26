@@ -4,11 +4,16 @@
 
 [![Code license: MIT](https://img.shields.io/badge/Code-MIT-green)](#license)
 [![Data license: Apache 2.0](https://img.shields.io/badge/Data-Apache%202.0-blue)](https://github.com/jaredpalmer/kev/blob/main/LICENSE)
+[![Hugging Face: Demo](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Demo-yellow)](https://huggingface.co/collections/jaluus/jevpertus)
 
 A simple, lightweight implementation of the Jev model on top of the Apertus LLM.
 JevPertus combines an Apertus text backbone, LoRA adapters, and a small pointer head to assign probabilities to a question's answer options.
 
 It supports multiple-choice questions, ordered rating scales, and true/false statements. Predictions come from scoring the supplied options in a single backbone pass.
+
+Models available in the [JevPertus collection on Hugging Face](https://huggingface.co/collections/jaluus/jevpertus).
+
+Also a there is a [demo on Huggingface](https://huggingface.co/spaces/jaluus/jevpertus) for trying out JevPertus on your own questions!
 
 ## How does Jev work?
 
